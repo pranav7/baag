@@ -69,22 +69,20 @@ async function checkGitStatus() {
 }
 
 // Get the baag directory (in current git repo root)
-function getBaagDir() {
-  const gitRoot = getGitRoot()
+async function getBaagDir() {
+  const gitRoot = await getGitRoot()
   return path.join(gitRoot, '.baag')
 }
 
-function getGitRoot() {
+async function getGitRoot() {
   try {
     // Get git root directory
-    const result = $`git rev-parse --show-toplevel`
+    const result = await $`git rev-parse --show-toplevel`
     return result.stdout.trim()
   } catch {
     return process.cwd()
   }
 }
-
-const baagDir = getBaagDir()
 
 function usage() {
   printHeader("Baag - Git Worktree Manager")
@@ -136,6 +134,7 @@ function showVersion() {
 }
 
 async function ensureBaagDir() {
+  const baagDir = await getBaagDir()
   if (!fs.existsSync(baagDir)) {
     printInfo(`Creating baag directory: ${printPath(baagDir)}`)
     await $`mkdir -p ${baagDir}`
@@ -145,10 +144,12 @@ async function ensureBaagDir() {
     await fs.writeFile(gitignorePath, '*\n!.gitignore\n')
     printInfo('Created .gitignore to exclude worktrees from main repo')
   }
+  return baagDir
 }
 
 async function worktreeExists(name) {
   try {
+    const baagDir = await getBaagDir()
     const result = await $`git worktree list`
     return result.stdout.includes(`${baagDir}/${name}`)
   } catch (error) {
@@ -191,20 +192,20 @@ async function startWorktree(name) {
     currentBaseBranch = "main"
   }
 
-  await ensureWorktreesDir()
+  const baagDir = await ensureBaagDir()
 
   printHeader("Creating Worktree")
-  console.log(`Creating worktree ${printBranch(name)} in ${printPath(`${worktreesDir}/${name}`)}`)
+  console.log(`Creating worktree ${printBranch(name)} in ${printPath(`${baagDir}/${name}`)}`)
   console.log(`Base branch: ${printBranch(currentBaseBranch)}`)
 
   try {
     // Create worktree with new branch
     if (await branchExists(name)) {
       printInfo(`Branch '${printBranch(name)}' already exists, creating worktree from existing branch`)
-      await $`git worktree add ${worktreesDir}/${name} ${name}`
+      await $`git worktree add ${baagDir}/${name} ${name}`
     } else {
       printInfo(`Creating new branch '${printBranch(name)}' and worktree`)
-      await $`git worktree add -b ${name} ${worktreesDir}/${name}`
+      await $`git worktree add -b ${name} ${baagDir}/${name}`
     }
 
     // Store the base branch for this worktree
@@ -214,9 +215,9 @@ async function startWorktree(name) {
     // Check if tmux and claude are available for enhanced workflow
     if (await checkTmuxClaude()) {
       printInfo("Both tmux and claude detected - creating integrated development environment")
-      await createTmuxSession(name, `${worktreesDir}/${name}`)
+      await createTmuxSession(name, `${baagDir}/${name}`)
     } else {
-      console.log(`Changing directory to: ${printPath(`${worktreesDir}/${name}`)}`)
+      console.log(`Changing directory to: ${printPath(`${baagDir}/${name}`)}`)
       
       try {
         await $`which tmux`
@@ -230,7 +231,7 @@ async function startWorktree(name) {
         printWarning("claude not found - falling back to standard shell")
       }
       
-      process.chdir(`${worktreesDir}/${name}`)
+      process.chdir(`${baagDir}/${name}`)
       // Start a new shell in the worktree directory
       await $`${process.env.SHELL || '/bin/bash'}`
     }
@@ -259,7 +260,7 @@ async function stopWorktree(name) {
   console.log(`Removing worktree ${printBranch(name)}`)
   
   try {
-    await $`git worktree remove ${worktreesDir}/${name}`
+    await $`git worktree remove ${baagDir}/${name}`
     
     // Clean up stored base branch config
     try {
@@ -279,6 +280,12 @@ async function listWorktrees() {
   try {
     const result = await $`git worktree list`
     const lines = result.stdout.trim().split('\n')
+    const baagDir = await getBaagDir()
+    
+    const worktreeTable = new Table({
+      head: [chalk.bold('Path'), chalk.bold('Hash'), chalk.bold('Branch')],
+      style: { border: [], head: ['cyan'] }
+    })
     
     for (const line of lines) {
       const parts = line.split(/\s+/)
@@ -286,33 +293,47 @@ async function listWorktrees() {
       const hash = parts[1]
       const branchMatch = line.match(/\[([^\]]+)\]/)
       
-      if (branchMatch) {
-        const branch = branchMatch[1]
-        console.log(`${printPath(path)} ${printHash(hash)} ${printBranch(branch)}`)
-      } else {
-        console.log(`${printPath(path)} ${printHash(hash)}`)
+      // Only show baag worktrees and main repo
+      if (path.includes(baagDir) || !path.includes('/.baag/')) {
+        if (branchMatch) {
+          const branch = branchMatch[1]
+          const displayPath = path.includes(baagDir) ? path.replace(baagDir + '/', '.baag/') : 'main repo'
+          worktreeTable.push([chalk.cyan(displayPath), chalk.blue(hash), printBranch(branch)])
+        } else {
+          const displayPath = path.includes(baagDir) ? path.replace(baagDir + '/', '.baag/') : 'main repo'
+          worktreeTable.push([chalk.cyan(displayPath), chalk.blue(hash), chalk.dim('(detached)')])
+        }
       }
     }
+    
+    console.log(worktreeTable.toString())
   } catch (error) {
     printError("Failed to list worktrees")
   }
 
-  printHeader("Remembered Base Branches")
+  printHeader("Worktree Information")
   try {
     const result = await $`git config --get-regexp "^worktree\\..*\\.base$"`
     const lines = result.stdout.trim().split('\n')
     
     if (lines.length > 0 && lines[0]) {
+      const infoTable = new Table({
+        head: [chalk.bold('Worktree'), chalk.bold('Base Branch')],
+        style: { border: [], head: ['cyan'] }
+      })
+      
       for (const line of lines) {
         const [key, value] = line.split(' ')
         const worktreeName = key.replace(/worktree\.(.*)\.base/, '$1')
-        console.log(`  ${printBranch(worktreeName)} ${colors.DIM}→${colors.NC} ${printBranch(value)}`)
+        infoTable.push([printBranch(worktreeName), printBranch(value)])
       }
+      
+      console.log(infoTable.toString())
     } else {
-      console.log(`${colors.DIM}  No remembered base branches${colors.NC}`)
+      console.log(chalk.dim('  No worktree information stored'))
     }
   } catch (error) {
-    console.log(`${colors.DIM}  No remembered base branches${colors.NC}`)
+    console.log(chalk.dim('  No worktree information stored'))
   }
 
   printHeader("Active Tmux Sessions")
@@ -321,6 +342,11 @@ async function listWorktrees() {
     const lines = result.stdout.trim().split('\n')
     
     if (lines.length > 0 && lines[0]) {
+      const sessionTable = new Table({
+        head: [chalk.bold('Worktree'), chalk.bold('Session'), chalk.bold('Status')],
+        style: { border: [], head: ['cyan'] }
+      })
+      
       for (const line of lines) {
         const [key, value] = line.split(' ')
         const worktreeName = key.replace(/worktree\.(.*)\.tmux-session/, '$1')
@@ -328,28 +354,29 @@ async function listWorktrees() {
         // Check if session is actually running
         try {
           await $`tmux has-session -t ${value}`
-          console.log(`  ${printBranch(worktreeName)} ${colors.DIM}→${colors.NC} ${colors.BOLD_CYAN}${value}${colors.NC} ${colors.GREEN}(active)${colors.NC}`)
+          sessionTable.push([printBranch(worktreeName), chalk.cyan(value), chalk.green('active')])
         } catch {
-          console.log(`  ${printBranch(worktreeName)} ${colors.DIM}→${colors.NC} ${colors.DIM}${value} (dead)${colors.NC}`)
+          sessionTable.push([printBranch(worktreeName), chalk.dim(value), chalk.dim('dead')])
         }
       }
+      
+      console.log(sessionTable.toString())
     } else {
-      console.log(`${colors.DIM}  No tmux sessions${colors.NC}`)
+      console.log(chalk.dim('  No tmux sessions'))
     }
   } catch (error) {
-    console.log(`${colors.DIM}  No tmux sessions${colors.NC}`)
+    console.log(chalk.dim('  No tmux sessions'))
   }
 }
 
 function isInWorktree() {
   const currentDir = process.cwd()
-  return currentDir.includes('/worktrees/')
+  return currentDir.includes('/.baag/')
 }
 
 async function getMainRepoDir() {
   try {
-    const result = await $`git worktree list`
-    return result.stdout.split('\n')[0].split(/\s+/)[0]
+    return await getGitRoot()
   } catch {
     return ""
   }
