@@ -1,6 +1,8 @@
 # Baag
 
-🚀 Enhanced git worktree workflows with tmux integration and PR creation
+<img width="1024" height="1536" alt="baag" src="https://github.com/user-attachments/assets/f6c2a416-3ce3-492f-b1ae-4912cd4c9e31" />
+
+🚀 Work on multiple branches with claude code
 
 Baag simplifies the creation and management of git worktrees, allowing you to work on multiple branches simultaneously with integrated development environments.
 
