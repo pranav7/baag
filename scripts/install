@@ -5,45 +5,15 @@
 
 set -e
 
-# Color codes and formatting
-if [ -t 1 ]; then
-  RED='\033[0;31m'
-  GREEN='\033[0;32m'
-  YELLOW='\033[0;33m'
-  BLUE='\033[0;34m'
-  BOLD='\033[1m'
-  DIM='\033[2m'
-  NC='\033[0m' # No Color
-else
-  RED='' GREEN='' YELLOW='' BLUE='' BOLD='' DIM='' NC=''
-fi
-
-# Print functions
-print_success() {
-  printf "${GREEN}✓${NC} %s\n" "$1"
-}
-
-print_error() {
-  printf "${RED}✗${NC} %s\n" "$1" >&2
-}
-
-print_info() {
-  printf "${BLUE}ℹ${NC} %s\n" "$1"
-}
-
-print_warning() {
-  printf "${YELLOW}⚠${NC} %s\n" "$1"
-}
-
-print_header() {
-  printf "\n${BOLD}%s${NC}\n" "$1"
-  printf "${DIM}%s${NC}\n" "$(printf '%*s' ${#1} '' | tr ' ' '─')"
-}
+# Load common library
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../lib/common.sh
+. "$SCRIPT_DIR/../lib/common.sh"
 
 # Installation configuration
 INSTALL_DIR="${HOME}/.local/bin"
+LIB_DIR="${HOME}/.local/lib/baag"
 SCRIPT_NAME="baag"
-ALIAS_NAME="wt"
 
 # Dependency tracking
 MISSING_DEPS=()
@@ -54,7 +24,7 @@ check_dependency() {
   local required="$2"
   local install_info="$3"
 
-  if command -v "$cmd" >/dev/null 2>&1; then
+  if check_command_enhanced "$cmd"; then
     print_success "$cmd is available"
     return 0
   else
@@ -108,6 +78,59 @@ check_dependencies() {
   fi
 }
 
+
+
+configure_path() {
+  local shell_config="$(detect_shell_config)"
+  local path_export="export PATH=\"\$PATH:$INSTALL_DIR\""
+
+  print_header "Configuring PATH"
+
+  # Check if PATH already contains our directory
+  if echo "$PATH" | grep -q ":$INSTALL_DIR" || echo "$PATH" | grep -q "^$INSTALL_DIR:"; then
+    print_success "$INSTALL_DIR is already in your PATH"
+    return 0
+  fi
+
+  print_info "Shell configuration file: $shell_config"
+
+  # Check if our export is already in the config file
+  if [ -f "$shell_config" ] && grep -q "PATH.*$INSTALL_DIR" "$shell_config"; then
+    print_success "PATH configuration already exists in $shell_config"
+    print_warning "You may need to restart your shell or run: source $shell_config"
+    return 0
+  fi
+
+  printf "\n${YELLOW}$INSTALL_DIR is not in your PATH.${NC}\n"
+  printf "Would you like to automatically add it to your shell configuration? (Y/n): "
+
+  read -r response
+  case "$response" in
+    [nN]|[nN][oO])
+      print_info "Skipping automatic PATH configuration"
+      printf "\n${DIM}To manually add to PATH, add this line to $shell_config:${NC}\n"
+      printf "${BLUE}$path_export${NC}\n"
+      return 1
+      ;;
+    *)
+      # Add PATH export to shell config
+      print_info "Adding PATH export to $shell_config"
+
+      # Create config file if it doesn't exist
+      if [ ! -f "$shell_config" ]; then
+        touch "$shell_config"
+      fi
+
+      # Add the export with a comment
+      printf "\n# Added by baag installer\n%s\n" "$path_export" >> "$shell_config"
+
+      print_success "PATH configuration added to $shell_config"
+      print_info "Restart your shell or run: ${BLUE}source $shell_config${NC}"
+      return 0
+      ;;
+  esac
+}
+
 setup_install_directory() {
   print_header "Setting Up Installation Directory"
 
@@ -118,13 +141,11 @@ setup_install_directory() {
     print_success "Directory exists: $INSTALL_DIR"
   fi
 
-  # Check if install directory is in PATH
-  if echo "$PATH" | grep -q "$INSTALL_DIR"; then
-    print_success "$INSTALL_DIR is in your PATH"
+  if [ ! -d "$LIB_DIR" ]; then
+    print_info "Creating library directory: $LIB_DIR"
+    mkdir -p "$LIB_DIR"
   else
-    print_warning "$INSTALL_DIR is not in your PATH"
-    print_info "Add the following to your shell configuration file (~/.bashrc, ~/.zshrc, etc.):"
-    printf "${DIM}export PATH=\"\$PATH:$INSTALL_DIR\"${NC}\n"
+    print_success "Library directory exists: $LIB_DIR"
   fi
 }
 
@@ -133,8 +154,9 @@ install_script() {
 
   local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   local source_script="$script_dir/../bin/$SCRIPT_NAME"
+  local source_lib="$script_dir/../lib/common.sh"
   local target_script="$INSTALL_DIR/$SCRIPT_NAME"
-  local target_alias="$INSTALL_DIR/$ALIAS_NAME"
+  local target_lib="$LIB_DIR/common.sh"
 
   if [ ! -f "$source_script" ]; then
     print_error "Source script not found: $source_script"
@@ -142,28 +164,29 @@ install_script() {
     exit 1
   fi
 
-  # Copy main script
+  if [ ! -f "$source_lib" ]; then
+    print_error "Source library not found: $source_lib"
+    print_info "Make sure you're running this script from the correct directory"
+    exit 1
+  fi
+
+  # Copy library first
+  print_info "Installing common library to $target_lib"
+  cp "$source_lib" "$target_lib"
+  print_success "Library installed"
+
+  # Copy main script and update library path
   print_info "Installing $SCRIPT_NAME to $target_script"
-  cp "$source_script" "$target_script"
+  sed "s|\$SCRIPT_DIR/../lib/common.sh|$target_lib|g" "$source_script" > "$target_script"
   chmod +x "$target_script"
   print_success "Main script installed"
-
-  # Create alias
-  print_info "Creating alias: $ALIAS_NAME -> $SCRIPT_NAME"
-  cat > "$target_alias" << 'EOF'
-#!/bin/bash
-# Baag alias
-exec baag "$@"
-EOF
-  chmod +x "$target_alias"
-  print_success "Alias created"
 }
 
 verify_installation() {
   print_header "Verifying Installation"
 
   local target_script="$INSTALL_DIR/$SCRIPT_NAME"
-  local target_alias="$INSTALL_DIR/$ALIAS_NAME"
+  local target_lib="$LIB_DIR/common.sh"
 
   if [ -x "$target_script" ]; then
     print_success "Main script is executable"
@@ -172,23 +195,32 @@ verify_installation() {
     return 1
   fi
 
-  if [ -x "$target_alias" ]; then
-    print_success "Alias is executable"
+  if [ -f "$target_lib" ]; then
+    print_success "Library is installed"
   else
-    print_error "Alias is not executable"
+    print_error "Library is not installed"
     return 1
   fi
 
-  # Test version command (only if in PATH)
+  # Test if commands are accessible
   if command -v "$SCRIPT_NAME" >/dev/null 2>&1; then
     print_info "Testing installation..."
     if "$SCRIPT_NAME" version >/dev/null 2>&1; then
-      print_success "Installation test passed"
+      print_success "Installation test passed - baag is ready to use!"
     else
-      print_warning "Installation test failed - you may need to restart your shell"
+      print_warning "Installation test failed - script found but not working properly"
     fi
   else
-    print_warning "Command not found in PATH - you may need to restart your shell"
+    print_warning "baag command not found in PATH"
+    print_info "You may need to restart your shell or run: ${BLUE}source $(detect_shell_config)${NC}"
+
+    # Test direct execution
+    if "$target_script" version >/dev/null 2>&1; then
+      print_info "Direct script execution works - PATH configuration needed"
+    else
+      print_error "Script installation may have failed"
+      return 1
+    fi
   fi
 }
 
@@ -197,15 +229,19 @@ show_usage_info() {
 
   printf "Baag has been installed successfully!\n\n"
 
+  # Check if baag is immediately available
+  if command -v "$SCRIPT_NAME" >/dev/null 2>&1; then
+    printf "${GREEN}✓${NC} baag is ready to use!\n\n"
+  else
+    printf "${YELLOW}⚠${NC} Restart your shell to use baag, or run: ${BLUE}source $(detect_shell_config)${NC}\n\n"
+  fi
+
   printf "${BOLD}Usage:${NC}\n"
   printf "  baag start <name>            # Create new worktree\n"
-  printf "  baag stop <name>             # Remove worktree\n"
+  printf "  baag stop [name]             # Remove worktree (auto-detects if in worktree)\n"
   printf "  baag list                    # List all worktrees\n"
   printf "  baag submit                  # Create PR and cleanup\n"
   printf "  baag version                 # Show version\n\n"
-
-  printf "${BOLD}Alias:${NC}\n"
-  printf "  wt <command>                 # Short alias for baag\n\n"
 
   printf "${BOLD}Getting Started:${NC}\n"
   printf "1. Navigate to any git repository\n"
@@ -233,6 +269,7 @@ main() {
 
   check_dependencies
   setup_install_directory
+  configure_path
   install_script
   verify_installation
   show_usage_info
