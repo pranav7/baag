@@ -1,27 +1,6 @@
 # 🌳 Baag
 
-Work on multiple branches with claude code. Baag simplifies git worktree management for efficient development workflows.
-
-## ✨ Features
-
-- **🌿 Easy Worktree Management**: Create and manage git worktrees with simple commands
-- **🎯 Smart Branch Tracking**: Remembers base branches for accurate PR targeting  
-- **🖥️ Tmux Integration**: Auto-creates tmux sessions with Claude AI when available
-- **🔄 PR Automation**: Create pull requests directly from your worktree
-- **🧹 Automatic Cleanup**: Clean removal of worktrees and sessions
-
-## 📦 Installation
-
-```bash
-npm install
-npm run install
-```
-
-Add `~/.local/bin` to your PATH:
-```bash
-echo 'export PATH="$PATH:$HOME/.local/bin"' >> ~/.bashrc
-source ~/.bashrc
-```
+Baag is a simple terminal app that allows you to run Claude Code, Gemini or Codex in a separate isoloated workspaces of the same project.
 
 ## 🚀 Usage
 
@@ -54,7 +33,7 @@ baag submit --no-pr
 
 ## 📁 Directory Structure
 
-Baag creates worktrees in a `.baag` directory within your git repository:
+Baag creates multiple workspaces in a `.baag` directory within your git repository (make sure to add it to your `.gitignore`)
 
 ```
 my-project/
@@ -66,40 +45,13 @@ my-project/
 └── ...
 ```
 
-## 🚀 Releasing New Versions
 
-For maintainers, use the automated release script:
-
-```bash
-# Patch release (0.0.1 → 0.0.2)
-npm run release:patch
-
-# Minor release (0.0.1 → 0.1.0)
-npm run release:minor
-
-# Major release (0.0.1 → 1.0.0)
-npm run release:major
-
-# Specific version
-./scripts/release.sh 1.2.3
-```
-
-The script automatically:
-- Updates `package.json` and Homebrew formula
-- Creates git tag and GitHub release
-- Calculates SHA256 and updates formula
-- Tests local installation
-
-## 🎯 Dependencies
+## Dependencies
 
 **Required:**
-- Node.js
-- git
-
-**Optional (for enhanced features):**
-- tmux - Multi-pane development environment
-- gh - GitHub CLI for PR creation  
-- claude - AI development assistance
+- tmux
+- gh
+- claude / gemini / codex
 
 ## 📄 License
 
