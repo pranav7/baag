@@ -1,6 +1,6 @@
 {
   "name": "migrate-to-python",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "🚀 Enhanced git worktree workflows with tmux integration and PR creation",
   "main": "index.js",
   "scripts": {

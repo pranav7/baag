@@ -1,8 +1,8 @@
 class Baag < Formula
   desc "Enhanced git worktree workflows with tmux integration and PR creation"
-  homepage "https://github.com/your-username/baag"
-  url "https://github.com/your-username/baag/archive/v1.0.0.tar.gz"
-  sha256 "SHA256_PLACEHOLDER"
+  homepage "https://github.com/pranav7/baag"
+  url "https://github.com/pranav7/baag/archive/v0.0.1.tar.gz"
+  sha256 "6dc86e7f4c55b4c3ebeb0c6afd0a99eeb14de220af70b699f1cd94f1faf0db13"
   license "MIT"
 
   depends_on "git"
