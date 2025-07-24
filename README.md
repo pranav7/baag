@@ -46,12 +46,48 @@ my-project/
 ```
 
 
+## 📦 Installation
+
+### Quick Install
+
+```bash
+# Clone the repository
+git clone https://github.com/pranav7/baag.git
+cd baag
+
+# Run the install script
+node scripts/install
+```
+
+The install script will:
+- Check for required dependencies (git, node)
+- Install baag to `~/.local/bin/baag`
+- Verify your PATH configuration
+- Display setup instructions
+
+### Manual Installation
+
+If you prefer to install manually:
+
+```bash
+# Make sure ~/.local/bin is in your PATH
+export PATH="$PATH:$HOME/.local/bin"
+
+# Copy the binary
+cp bin/baag.mjs ~/.local/bin/baag
+chmod +x ~/.local/bin/baag
+```
+
 ## Dependencies
 
 **Required:**
-- tmux
-- gh
-- claude / gemini / codex
+- git
+- node
+
+**Optional (for enhanced features):**
+- tmux (for session management)
+- gh (for PR creation)
+- claude / gemini / codex (for AI integration)
 
 ## 📄 License
 
