@@ -66,6 +66,30 @@ my-project/
 └── ...
 ```
 
+## 🚀 Releasing New Versions
+
+For maintainers, use the automated release script:
+
+```bash
+# Patch release (0.0.1 → 0.0.2)
+npm run release:patch
+
+# Minor release (0.0.1 → 0.1.0)
+npm run release:minor
+
+# Major release (0.0.1 → 1.0.0)
+npm run release:major
+
+# Specific version
+./scripts/release.sh 1.2.3
+```
+
+The script automatically:
+- Updates `package.json` and Homebrew formula
+- Creates git tag and GitHub release
+- Calculates SHA256 and updates formula
+- Tests local installation
+
 ## 🎯 Dependencies
 
 **Required:**

@@ -1,14 +1,15 @@
 class Baag < Formula
   desc "Enhanced git worktree workflows with tmux integration and PR creation"
-  homepage "https://github.com/your-username/baag"
-  url "https://github.com/your-username/baag/archive/v1.0.0.tar.gz"
-  sha256 "SHA256_PLACEHOLDER"
+  homepage "https://github.com/pranav7/baag"
+  url "https://github.com/pranav7/baag/archive/v0.0.1.tar.gz"
+  sha256 "ed9ec250130e09cf0e585277a21bb2623e6da6c9003b4f81ade5831c7b722099"
   license "MIT"
 
   depends_on "git"
 
   def install
     bin.install "bin/baag"
+    lib.install "lib/common.sh"
 
     # Create alias
     (bin/"wt").write <<~EOS

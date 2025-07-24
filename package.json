@@ -1,6 +1,6 @@
 {
   "name": "migrate-to-python",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "🚀 Enhanced git worktree workflows with tmux integration and PR creation",
   "main": "index.js",
   "scripts": {
@@ -9,7 +9,11 @@
     "test": "node bin/baag.mjs version && echo 'Basic functionality test passed'",
     "lint": "echo 'No linting configured yet'",
     "dev-install": "mkdir -p ~/.local/bin && ln -sf $(pwd)/bin/baag.mjs ~/.local/bin/baag",
-    "dev-uninstall": "rm -f ~/.local/bin/baag"
+    "dev-uninstall": "rm -f ~/.local/bin/baag",
+    "release": "./scripts/release.sh",
+    "release:patch": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major"
   },
   "keywords": [],
   "author": "",
