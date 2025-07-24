@@ -84,3 +84,6 @@ $RECYCLE.BIN/
 test_*
 *_test
 test-*
+
+# Node.js
+node_modules/

@@ -1,0 +1,242 @@
+#!/usr/bin/env zx
+
+import { $, path, fs, os } from 'zx'
+import chalk from 'chalk'
+import boxen from 'boxen'
+import figures from 'figures'
+
+$.verbose = false
+
+// Enhanced print functions using modern CLI libraries
+function printSuccess(message) {
+  console.log(chalk.green(figures.tick) + ' ' + message)
+}
+
+function printError(message) {
+  console.error(chalk.red(figures.cross) + ' ' + message)
+}
+
+function printInfo(message) {
+  console.log(chalk.blue(figures.info) + ' ' + message)
+}
+
+function printWarning(message) {
+  console.log(chalk.yellow(figures.warning) + ' ' + message)
+}
+
+function printHeader(message) {
+  console.log(boxen(chalk.bold.cyan(message), {
+    padding: { top: 0, bottom: 0, left: 1, right: 1 },
+    margin: { top: 1, bottom: 0 },
+    borderStyle: 'round',
+    borderColor: 'cyan'
+  }))
+}
+
+// Installation configuration
+const INSTALL_DIR = path.join(os.homedir(), '.local', 'bin')
+const SCRIPT_NAME = "baag"
+
+// Dependency tracking
+const MISSING_DEPS = []
+const OPTIONAL_DEPS = []
+
+async function checkDependency(cmd, required, installInfo) {
+  try {
+    await $`which ${cmd}`
+    printSuccess(`${cmd} is available`)
+    return true
+  } catch {
+    if (required) {
+      printError(`${cmd} is not installed (required)`)
+      MISSING_DEPS.push(`${cmd}|${installInfo}`)
+    } else {
+      printWarning(`${cmd} is not installed (optional - enables enhanced features)`)
+      OPTIONAL_DEPS.push(`${cmd}|${installInfo}`)
+    }
+    return false
+  }
+}
+
+async function checkDependencies() {
+  printHeader("Checking Dependencies")
+
+  // Required dependencies
+  await checkDependency("git", true, "Install from: https://git-scm.com/downloads")
+  await checkDependency("node", true, "Install from: https://nodejs.org/")
+
+  // Optional dependencies
+  await checkDependency("tmux", false, "Install with: brew install tmux (macOS) or apt-get install tmux (Ubuntu)")
+  await checkDependency("gh", false, "Install from: https://cli.github.com/ (enables PR creation)")
+  await checkDependency("claude", false, "Install from: https://claude.ai/claude-cli (enables AI integration)")
+
+  if (MISSING_DEPS.length > 0) {
+    printHeader("Missing Required Dependencies")
+    for (const dep of MISSING_DEPS) {
+      const [cmd, info] = dep.split('|')
+      console.log(`  ${chalk.red(cmd)}: ${info}`)
+    }
+    console.log("\nPlease install the required dependencies and run this script again.")
+    process.exit(1)
+  }
+
+  if (OPTIONAL_DEPS.length > 0) {
+    printHeader("Optional Dependencies")
+    console.log(chalk.dim('The following optional dependencies can enhance your workflow:'))
+    for (const dep of OPTIONAL_DEPS) {
+      const [cmd, info] = dep.split('|')
+      console.log(`  ${chalk.yellow(cmd)}: ${info}`)
+    }
+    console.log('\n' + chalk.dim('You can install these later to enable additional features.'))
+  }
+}
+
+async function setupInstallDirectory() {
+  printHeader("Setting Up Installation Directory")
+
+  if (!fs.existsSync(INSTALL_DIR)) {
+    printInfo(`Creating directory: ${INSTALL_DIR}`)
+    await $`mkdir -p ${INSTALL_DIR}`
+  } else {
+    printSuccess(`Directory exists: ${INSTALL_DIR}`)
+  }
+
+  // Check if install directory is in PATH
+  const pathEnv = process.env.PATH || ""
+  if (pathEnv.includes(INSTALL_DIR)) {
+    printSuccess(`${INSTALL_DIR} is in your PATH`)
+  } else {
+    printWarning(`${INSTALL_DIR} is not in your PATH`)
+    printInfo("Add the following to your shell configuration file (~/.bashrc, ~/.zshrc, etc.):")
+    console.log(chalk.dim(`export PATH="$PATH:${INSTALL_DIR}"`))
+  }
+}
+
+async function installScript() {
+  printHeader("Installing Git Worktree Manager")
+
+  const scriptDir = path.dirname(new URL(import.meta.url).pathname)
+  const sourceScript = path.join(scriptDir, '..', 'bin', `${SCRIPT_NAME}.mjs`)
+  const targetScript = path.join(INSTALL_DIR, SCRIPT_NAME)
+
+  if (!fs.existsSync(sourceScript)) {
+    printError(`Source script not found: ${sourceScript}`)
+    printInfo("Make sure you're running this script from the correct directory")
+    process.exit(1)
+  }
+
+  // Copy main script
+  printInfo(`Installing ${SCRIPT_NAME} to ${targetScript}`)
+  await $`cp ${sourceScript} ${targetScript}`
+  await $`chmod +x ${targetScript}`
+  printSuccess("Main script installed")
+}
+
+async function verifyInstallation() {
+  printHeader("Verifying Installation")
+
+  const targetScript = path.join(INSTALL_DIR, SCRIPT_NAME)
+
+  try {
+    await $`test -x ${targetScript}`
+    printSuccess("Main script is executable")
+  } catch {
+    printError("Main script is not executable")
+    return false
+  }
+
+  // Test version command (only if in PATH)
+  try {
+    await $`which ${SCRIPT_NAME}`
+    printInfo("Testing installation...")
+    try {
+      await $`${SCRIPT_NAME} version`
+      printSuccess("Installation test passed")
+    } catch {
+      printWarning("Installation test failed - you may need to restart your shell")
+    }
+  } catch {
+    printWarning("Command not found in PATH - you may need to restart your shell")
+  }
+
+  return true
+}
+
+function showUsageInfo() {
+  printHeader("Installation Complete")
+
+  console.log(boxen([
+    chalk.green(figures.tick) + ' Baag has been installed successfully!',
+    '',
+    chalk.bold('Usage:'),
+    '  baag start <name>     # Create new worktree',
+    '  baag stop [name]      # Remove worktree', 
+    '  baag list            # List all worktrees',
+    '  baag submit          # Create PR and cleanup',
+    '  baag version         # Show version',
+    '',
+    chalk.bold('Getting Started:'),
+    '1. Navigate to any git repository',
+    `2. Run: ${chalk.blue('baag start feature-branch')}`,
+    '3. Work on your feature',
+    `4. Run: ${chalk.blue('baag submit')} to create a PR`
+  ].join('\n'), {
+    padding: 1,
+    margin: { top: 0, bottom: 1 },
+    borderStyle: 'double',
+    borderColor: 'green'
+  }))
+
+  if (OPTIONAL_DEPS.length > 0) {
+    console.log(chalk.dim('Install optional dependencies for enhanced features:'))
+    for (const dep of OPTIONAL_DEPS) {
+      const [cmd, info] = dep.split('|')
+      console.log(`  ${chalk.yellow(cmd)}: ${info}`)
+    }
+    console.log()
+  }
+
+  console.log(`For more information, run: ${chalk.blue('baag --help')}`)
+}
+
+// Main installation flow
+async function main() {
+  const command = process.argv[2] || 'install'
+
+  switch (command) {
+    case 'install':
+      printHeader("Baag Installation")
+      console.log(chalk.dim('Enhanced git worktree workflows with tmux integration'))
+
+      await checkDependencies()
+      await setupInstallDirectory()
+      await installScript()
+      await verifyInstallation()
+      showUsageInfo()
+      break
+
+    case 'check':
+      await checkDependencies()
+      break
+
+    case '--help':
+    case '-h':
+      console.log("Baag Installation Script\n")
+      console.log("Usage: install.mjs [command]\n")
+      console.log("Commands:")
+      console.log("  install (default)  Install baag")
+      console.log("  check              Only check dependencies")
+      console.log("  --help, -h         Show this help")
+      break
+
+    default:
+      printError(`Unknown command: ${command}`)
+      console.log("Run 'install.mjs --help' for usage information.")
+      process.exit(1)
+  }
+}
+
+main().catch(error => {
+  printError(`Installation failed: ${error.message}`)
+  process.exit(1)
+})
