@@ -145,7 +145,7 @@ async function installScript() {
   // Install all library modules
   printInfo(`Installing library modules to ${LIB_DIR}`)
   const libSourceDir = path.join(scriptDir, '..', 'lib')
-  
+
   // Copy all .mjs files from lib directory
   try {
     const libFiles = await fs.readdir(libSourceDir)
@@ -165,18 +165,18 @@ async function installScript() {
 
   // Install main script (create wrapper for proper module resolution)
   printInfo(`Installing ${SCRIPT_NAME} to ${targetScript}`)
-  
+
   // Copy the actual script to lib directory
   const actualScript = path.join(LIB_DIR, 'baag.mjs')
   await $`cp ${sourceScript} ${actualScript}`
-  
+
   // Create a wrapper script that sets up the environment
   const wrapperScript = `#!/bin/bash
 # Baag wrapper script
 export NODE_PATH="${LIB_DIR}/node_modules:$NODE_PATH"
 node "${LIB_DIR}/baag.mjs" "$@"
 `
-  
+
   await fs.writeFile(targetScript, wrapperScript)
   await $`chmod +x ${targetScript}`
   printSuccess("Main script installed")
@@ -190,14 +190,14 @@ node "${LIB_DIR}/baag.mjs" "$@"
     dependencies: {
       "zx": "^8.0.0",
       "chalk": "^5.3.0",
-      "boxen": "^7.1.1", 
+      "boxen": "^7.1.1",
       "figures": "^6.1.0"
     }
   }
-  
+
   printInfo("Creating package.json for dependencies...")
   await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2))
-  
+
   // Install dependencies in the lib directory
   printInfo("Installing Node.js dependencies...")
   try {
