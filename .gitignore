@@ -87,3 +87,6 @@ test-*
 
 # Node.js
 node_modules/
+
+# Baag worktree directory
+.baag/

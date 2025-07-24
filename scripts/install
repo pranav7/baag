@@ -247,6 +247,55 @@ async function verifyInstallation() {
   return true
 }
 
+// Setup .baag directory and .gitignore for projects
+async function setupProjectFiles() {
+  printHeader("Setting Up Project Integration")
+
+  try {
+    // Check if we're in a git repository
+    await $`git rev-parse --is-inside-work-tree`
+    printInfo("Git repository detected - setting up .baag integration")
+
+    // Create .baag directory
+    const baagDir = path.join(process.cwd(), '.baag')
+    if (!await fs.pathExists(baagDir)) {
+      await fs.ensureDir(baagDir)
+      printSuccess("Created .baag directory")
+    } else {
+      printInfo(".baag directory already exists")
+    }
+
+    // Add .baag to .gitignore if not already present
+    const gitignorePath = path.join(process.cwd(), '.gitignore')
+    let gitignoreExists = false
+    let gitignoreContent = ''
+
+    if (await fs.pathExists(gitignorePath)) {
+      gitignoreContent = await fs.readFile(gitignorePath, 'utf8')
+      gitignoreExists = true
+    }
+
+    if (!gitignoreContent.includes('.baag')) {
+      const newContent = gitignoreExists
+        ? gitignoreContent + '\n# Baag worktree directory\n.baag/\n'
+        : '# Baag worktree directory\n.baag/\n'
+
+      await fs.writeFile(gitignorePath, newContent)
+      printSuccess("Added .baag to .gitignore")
+    } else {
+      printInfo(".baag already in .gitignore")
+    }
+
+  } catch (error) {
+    if (error.stderr && error.stderr.includes('not a git repository')) {
+      printInfo("Not in a git repository - skipping .baag setup")
+      printInfo("Run 'baag start' from within a git repository to create .baag directory")
+    } else {
+      printWarning(`Could not setup project files: ${error.message}`)
+    }
+  }
+}
+
 function showUsageInfo() {
   printHeader("Installation Complete")
 
@@ -303,6 +352,7 @@ async function main() {
       await setupInstallDirectory()
       await installScript()
       await verifyInstallation()
+      await setupProjectFiles()
       showUsageInfo()
       break
 
