@@ -170,16 +170,16 @@ function showUsageInfo() {
     '',
     chalk.bold('Usage:'),
     '  baag start <name>     # Create new worktree',
-    '  baag stop [name]      # Remove worktree', 
+    '  baag stop [name]      # Remove worktree',
     '  baag list            # List all worktrees',
-    '  baag submit          # Create PR and cleanup',
+    '  baag submit|finish   # Create PR and cleanup',
     '  baag version         # Show version',
     '',
     chalk.bold('Getting Started:'),
     '1. Navigate to any git repository',
     `2. Run: ${chalk.blue('baag start feature-branch')}`,
     '3. Work on your feature',
-    `4. Run: ${chalk.blue('baag submit')} to create a PR`
+    `4. Run: ${chalk.blue('baag submit')} or ${chalk.blue('baag finish')} to create a PR`
   ].join('\n'), {
     padding: 1,
     margin: { top: 0, bottom: 1 },

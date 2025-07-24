@@ -33,13 +33,18 @@ usage() {
   printf "  ${BOLD_RED}stop${NC} ${CYAN}[n]${NC}                 Remove an existing worktree\n"
   printf "                              ${DIM}Auto-detects worktree if run from within one${NC}\n"
   printf "                              ${DIM}Cleans up tmux sessions automatically${NC}\n"
-  printf "  ${BOLD_BLUE}submit${NC} ${DIM}[options]${NC}             Create PR and optionally clean up current worktree\n"
+  printf "  ${BOLD_BLUE}submit${NC}|${BOLD_BLUE}finish${NC} ${DIM}[options]${NC}        Create PR and optionally clean up current worktree\n"
   printf "                              ${DIM}--title <title>: PR title (default: use commit messages)${NC}\n"
   printf "                              ${DIM}--base-branch <branch>: target branch (default: remembered base)${NC}\n"
   printf "                              ${DIM}--no-verify: bypass git hooks when pushing${NC}\n"
   printf "                              ${DIM}--no-pr: only push, don't create pull request${NC}\n"
-  printf "  ${BOLD_YELLOW}list${NC}, ${BOLD_YELLOW}ls${NC}                    Show all existing worktrees and tmux sessions\n"
-  printf "  ${BOLD_MAGENTA}version${NC}                   Show version information\n"
+  printf "  ${BOLD_YELLOW}list${NC}|${BOLD_YELLOW}ls${NC}                     Show all existing worktrees and tmux sessions\n"
+  printf "  ${BOLD_MAGENTA}version${NC}|${BOLD_MAGENTA}--version${NC}|${BOLD_MAGENTA}-v${NC}        Show version information\n"
+  printf "\n${BOLD}Examples:${NC}\n"
+  printf "  ${DIM}baag start feature-branch     # Create and switch to new worktree${NC}\n"
+  printf "  ${DIM}baag stop                     # Remove current worktree (auto-detected)${NC}\n"
+  printf "  ${DIM}baag finish                   # Create PR and optionally cleanup${NC}\n"
+  printf "  ${DIM}baag ls                       # List all worktrees${NC}\n"
   exit 1
 }
 
@@ -577,8 +582,8 @@ case "$command" in
   stop)
     stop_worktree "$2"
     ;;
-  submit)
-    # Pass all arguments except the first one (which is 'submit')
+  submit|finish)
+    # Pass all arguments except the first one (which is 'submit' or 'finish')
     shift
     submit_worktree "$@"
     ;;
