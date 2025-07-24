@@ -174,7 +174,7 @@ async function installScript() {
   const wrapperScript = `#!/bin/bash
 # Baag wrapper script
 export NODE_PATH="${LIB_DIR}/node_modules:$NODE_PATH"
-cd "${LIB_DIR}" && node baag.mjs "$@"
+node "${LIB_DIR}/baag.mjs" "$@"
 `
   
   await fs.writeFile(targetScript, wrapperScript)

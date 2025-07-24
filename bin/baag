@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename)
 
 // Determine lib directory - for installed version vs development version
 let libDir = path.join(__dirname, '../lib')
-if (process.cwd().includes('.local/lib/baag')) {
+if (__dirname.includes('.local/lib/baag')) {
   // Running from installed location
   libDir = __dirname
 }
