@@ -65,6 +65,7 @@ async function checkDependencies() {
   // Required dependencies
   await checkDependency("git", true, "Install from: https://git-scm.com/downloads")
   await checkDependency("node", true, "Install from: https://nodejs.org/")
+  await checkDependency("zx", true, "Install with: npm install -g zx")
 
   // Optional dependencies
   await checkDependency("tmux", false, "Install with: brew install tmux (macOS) or apt-get install tmux (Ubuntu)")
@@ -141,16 +142,71 @@ async function installScript() {
     process.exit(1)
   }
 
-  // Copy library first
-  printInfo(`Installing common library to ${targetLib}`)
-  await $`cp ${sourceLib} ${targetLib}`
-  printSuccess("Library installed")
+  // Install all library modules
+  printInfo(`Installing library modules to ${LIB_DIR}`)
+  const libSourceDir = path.join(scriptDir, '..', 'lib')
+  
+  // Copy all .mjs files from lib directory
+  try {
+    const libFiles = await fs.readdir(libSourceDir)
+    for (const file of libFiles) {
+      if (file.endsWith('.mjs')) {
+        const sourceFile = path.join(libSourceDir, file)
+        const targetFile = path.join(LIB_DIR, file)
+        await $`cp ${sourceFile} ${targetFile}`
+        printInfo(`  Copied ${file}`)
+      }
+    }
+    printSuccess("Library modules installed")
+  } catch (error) {
+    printError(`Failed to copy library modules: ${error.message}`)
+    process.exit(1)
+  }
 
-  // Copy main script and update library path
+  // Install main script (create wrapper for proper module resolution)
   printInfo(`Installing ${SCRIPT_NAME} to ${targetScript}`)
-  await $`sed 's|\\$SCRIPT_DIR/../lib/common.sh|${targetLib}|g' ${sourceScript} > ${targetScript}`
+  
+  // Copy the actual script to lib directory
+  const actualScript = path.join(LIB_DIR, 'baag.mjs')
+  await $`cp ${sourceScript} ${actualScript}`
+  
+  // Create a wrapper script that sets up the environment
+  const wrapperScript = `#!/bin/bash
+# Baag wrapper script
+export NODE_PATH="${LIB_DIR}/node_modules:$NODE_PATH"
+cd "${LIB_DIR}" && node baag.mjs "$@"
+`
+  
+  await fs.writeFile(targetScript, wrapperScript)
   await $`chmod +x ${targetScript}`
   printSuccess("Main script installed")
+
+  // Create package.json for dependencies in the lib directory
+  const packageJsonPath = path.join(LIB_DIR, 'package.json')
+  const packageJson = {
+    name: "baag-lib",
+    version: "0.0.1",
+    type: "module",
+    dependencies: {
+      "zx": "^8.0.0",
+      "chalk": "^5.3.0",
+      "boxen": "^7.1.1", 
+      "figures": "^6.1.0"
+    }
+  }
+  
+  printInfo("Creating package.json for dependencies...")
+  await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2))
+  
+  // Install dependencies in the lib directory
+  printInfo("Installing Node.js dependencies...")
+  try {
+    await $`cd ${LIB_DIR} && npm install --omit=dev`
+    printSuccess("Dependencies installed")
+  } catch (error) {
+    printWarning("Failed to install dependencies automatically")
+    printInfo("You may need to run: cd ~/.local/lib/baag && npm install")
+  }
 }
 
 async function verifyInstallation() {
@@ -178,6 +234,14 @@ async function verifyInstallation() {
     }
   } catch {
     printWarning("Command not found in PATH - you may need to restart your shell")
+    // Fallback: test with zx directly
+    try {
+      printInfo("Testing with zx directly...")
+      await $`zx ${targetScript} version`
+      printSuccess("ZX-based installation test passed")
+    } catch {
+      printWarning("ZX test also failed - please check your installation")
+    }
   }
 
   return true

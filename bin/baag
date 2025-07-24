@@ -1,709 +1,210 @@
-#!/bin/sh
-#
-# Git Worktree Manager - Manage git worktrees with simple start/stop commands
-# A tool for enhanced git worktree workflows with tmux integration and PR creation
+#!/usr/bin/env zx
 
-# Load common library
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-# shellcheck source=../lib/common.sh
-. "$SCRIPT_DIR/../lib/common.sh"
+import { $ } from 'zx'
+import path from 'path'
+import os from 'os'
+import { fileURLToPath } from 'url'
 
-command="$1"
+// Get script directory for module imports
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
-# Validate we're in a git repository before proceeding
-if ! check_git_repository; then
-  exit 1
-fi
-
-if ! check_git_status; then
-  exit 1
-fi
-
-# Get the worktrees directory
-worktrees_dir="$(get_worktrees_dir)"
-
-show_banner() {
-  printf "\n"
-  printf "       ${BOLD_YELLOW}██████╗  █████╗  █████╗  ██████╗${NC}\n"
-  printf "       ${BOLD_YELLOW}██╔══██╗██╔══██╗██╔══██╗██╔════╝${NC}\n"
-  printf "       ${BOLD_YELLOW}██████╔╝███████║███████║██║  ███╗${NC}\n"
-  printf "       ${BOLD_YELLOW}██╔══██╗██╔══██║██╔══██║██║   ██║${NC}\n"
-  printf "       ${BOLD_YELLOW}██████╔╝██║  ██║██║  ██║╚██████╔╝${NC}\n"
-  printf "       ${BOLD_YELLOW}╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝${NC}\n"
-  printf "\n"
-  printf "         ${BOLD_WHITE}AI Terminal Agent Automation${NC}\n"
-  printf "\n"
+// Determine lib directory - for installed version vs development version
+let libDir = path.join(__dirname, '../lib')
+if (process.cwd().includes('.local/lib/baag')) {
+  // Running from installed location
+  libDir = __dirname
 }
 
-usage() {
-  show_banner
-  printf "${BOLD}Usage:${NC} baag ${CYAN}<command>${NC} ${DIM}[options] [name]${NC}\n\n"
+// Import modules
+const { printError, colors } = await import(path.join(libDir, 'colors.mjs'))
+const { showBanner, showVersion } = await import(path.join(libDir, 'banner.mjs'))
+const { checkGitRepository, checkGitStatus } = await import(path.join(libDir, 'git-utils.mjs'))
+const { startWorktree, stopWorktree, listWorktrees, submitWorktree } = await import(path.join(libDir, 'worktree-utils.mjs'))
 
-  printf "${BOLD}Commands:${NC}\n"
-  printf "  ${BOLD_GREEN}start${NC} ${CYAN}<name>${NC} ${DIM}[options]${NC}        Create a new worktree and branch\n"
-  printf "                              ${DIM}Remembers current branch as base for PR${NC}\n"
-  printf "                              ${DIM}Auto-creates tmux session with Claude if available${NC}\n"
-  printf "                              ${DIM}--horizontal-split, --hs: Use horizontal tmux split${NC}\n"
-  printf "  ${BOLD_RED}stop${NC} ${CYAN}[name]${NC}              Remove an existing worktree\n"
-  printf "                              ${DIM}Auto-detects worktree if run from within one${NC}\n"
-  printf "                              ${DIM}Cleans up tmux sessions automatically${NC}\n"
-  printf "  ${BOLD_BLUE}submit${NC}|${BOLD_BLUE}finish${NC} ${DIM}[options]${NC}        Create PR and optionally clean up current worktree\n"
-  printf "                              ${DIM}(submit and finish are the same command)${NC}\n"
-  printf "                              ${DIM}--title <title>: PR title (default: use commit messages)${NC}\n"
-  printf "                              ${DIM}--base-branch <branch>: target branch (default: remembered base)${NC}\n"
-  printf "                              ${DIM}--no-verify: bypass git hooks when pushing${NC}\n"
-  printf "                              ${DIM}--no-pr: only push, don't create pull request${NC}\n"
-  printf "  ${BOLD_YELLOW}list${NC}|${BOLD_YELLOW}ls${NC}                     Show all existing worktrees and tmux sessions\n"
-  printf "  ${BOLD_CYAN}update${NC}                    Update baag to the latest version\n"
-  printf "  ${BOLD_WHITE}help${NC}|${BOLD_WHITE}--help${NC}|${BOLD_WHITE}-h${NC}            Show this help message\n"
-  printf "  ${BOLD_MAGENTA}version${NC}|${BOLD_MAGENTA}--version${NC}|${BOLD_MAGENTA}-v${NC}        Show version information\n"
-  printf "\n${BOLD}Examples:${NC}\n"
-  printf "  ${DIM}baag start feature-branch     # Create and switch to new worktree${NC}\n"
-  printf "  ${DIM}baag start new-ui --hs        # Create with horizontal tmux split${NC}\n"
-  printf "  ${DIM}baag stop                     # Remove current worktree (auto-detected)${NC}\n"
-  printf "  ${DIM}baag finish                   # Create PR and optionally cleanup${NC}\n"
-  printf "  ${DIM}baag help                     # Show beautiful banner and help${NC}\n"
-  printf "  ${DIM}baag update                   # Update to latest version${NC}\n"
-  printf "  ${DIM}baag ls                       # List all worktrees${NC}\n"
-  exit 1
-}
+// Update functionality
+async function updateBaag() {
+  const { printHeader, printInfo, printSuccess, printError, formatCommand } = await import(path.join(libDir, 'colors.mjs'))
 
-show_version() {
-  show_banner
-  printf "Version: ${BOLD_GREEN}0.0.1${NC}\n"
-  printf "Author: ${BOLD_CYAN}https://github.com/your-username/baag${NC}\n"
-  printf "License: ${BOLD_YELLOW}MIT${NC}\n"
-  exit 0
-}
+  printHeader('Updating Baag')
 
-update_baag() {
-  print_header "Updating Baag"
+  // Check if we're in a baag repository
+  const fs = await import('fs')
+  const hasMainScript = fs.existsSync('bin/baag')
+  const hasInstallScript = fs.existsSync('scripts/install')
 
-  # Check if we're in a baag repository
-  if [ ! -f "bin/baag" ] || [ ! -f "scripts/install" ]; then
-    printf "${YELLOW}Update from a baag repository:${NC}\n\n"
-    printf "1. Clone or navigate to a baag repository:\n"
-    printf "   ${BLUE}git clone <repository-url>${NC}\n"
-    printf "   ${BLUE}cd baag${NC}\n\n"
-    printf "2. Run the update command:\n"
-    printf "   ${BLUE}baag update${NC}\n\n"
-    printf "3. Or run the install script directly:\n"
-    printf "   ${BLUE}node scripts/install${NC}\n\n"
-    exit 1
-  fi
+  if (!hasMainScript || !hasInstallScript) {
+    console.log(`${colors.yellow('Update from a baag repository:')}`)
+    console.log()
+    console.log('1. Clone or navigate to a baag repository:')
+    console.log(`   ${formatCommand('git clone <repository-url>')}`)
+    console.log(`   ${formatCommand('cd baag')}`)
+    console.log()
+    console.log('2. Run the update command:')
+    console.log(`   ${formatCommand('baag update')}`)
+    console.log()
+    console.log('3. Or run the install script directly:')
+    console.log(`   ${formatCommand('node scripts/install')}`)
+    console.log()
+    process.exit(1)
+  }
 
-  print_info "Running install script to update baag..."
+  printInfo('Running install script to update baag...')
 
-  # Check if install script exists and is executable
-  if [ -f "scripts/install" ]; then
-    # Try different ways to run the install script
-    if command -v node >/dev/null 2>&1; then
-      print_info "Using Node.js to run install script"
-      node scripts/install
-    elif command -v zx >/dev/null 2>&1; then
-      print_info "Using zx to run install script"
-      zx scripts/install
-    else
-      print_error "Neither Node.js nor zx found. Please install Node.js to update baag."
-      exit 1
-    fi
-  else
-    print_error "Install script not found. Make sure you're in a baag repository."
-    exit 1
-  fi
-
-  print_success "Update complete!"
-  printf "\n${BOLD}Updated features:${NC}\n"
-  printf "• Enhanced branding and help text\n"
-  printf "• submit/finish command aliases\n"
-  printf "• Horizontal tmux splits (--hs option)\n"
-  printf "• Auto-detection for stop command\n"
-  printf "• Origin tracking and return functionality\n"
-  printf "\nRun ${BLUE}baag --help${NC} to see all available options.\n"
-}
-
-ensure_worktrees_dir() {
-  if [ ! -d "$worktrees_dir" ]; then
-    print_info "Creating worktrees directory: $(print_path "$worktrees_dir")"
-    mkdir -p "$worktrees_dir"
-  fi
-}
-
-worktree_exists() {
-  git worktree list | grep -q "$worktrees_dir/$name"
-}
-
-branch_exists() {
-  git show-ref --verify --quiet "refs/heads/$name"
-}
-
-start_worktree() {
-  # Parse arguments
-  local horizontal_split=false
-  local name=""
-
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      --horizontal-split|--hs)
-        horizontal_split=true
-        shift
-        ;;
-      -*)
-        print_error "Unknown option: $1"
-        usage
-        ;;
-      *)
-        if [ -z "$name" ]; then
-          name="$1"
-        else
-          print_error "Too many arguments"
-          usage
-        fi
-        shift
-        ;;
-    esac
-  done
-
-  if [ -z "$name" ]; then
-    print_error "Worktree name is required"
-    usage
-  fi
-
-  if worktree_exists; then
-    print_error "Worktree '$(print_branch "$name")' already exists"
-    exit 1
-  fi
-
-  # Remember the current branch as the base branch for this worktree
-  current_base_branch="$(get_current_branch)"
-  if [ -z "$current_base_branch" ]; then
-    current_base_branch="main"
-  fi
-
-  ensure_worktrees_dir
-
-  print_header "Creating Worktree"
-  printf "Creating worktree $(print_branch "$name") in $(print_path "$worktrees_dir/$name")\n"
-  printf "Base branch: $(print_branch "$current_base_branch")\n"
-
-  # Create worktree with new branch
-  if branch_exists; then
-    print_info "Branch '$(print_branch "$name")' already exists, creating worktree from existing branch"
-    git worktree add "$worktrees_dir/$name" "$name"
-  else
-    print_info "Creating new branch '$(print_branch "$name")' and worktree"
-    git worktree add -b "$name" "$worktrees_dir/$name"
-  fi
-
-  if [ $? -eq 0 ]; then
-    # Store the base branch for this worktree
-    git config "worktree.$name.base" "$current_base_branch"
-
-    # Store the original directory and branch for easy return
-    git config "worktree.$name.origin-dir" "$PWD"
-    git config "worktree.$name.origin-branch" "$current_base_branch"
-
-    print_success "Worktree created successfully"
-
-    # Check if tmux and claude are available for enhanced workflow
-    if check_tmux_claude; then
-      print_info "Both tmux and claude detected - creating integrated development environment"
-      create_tmux_session "$name" "$worktrees_dir/$name" "$horizontal_split"
-    else
-      printf "Changing directory to: $(print_path "$worktrees_dir/$name")\n"
-      if ! check_command_enhanced "tmux"; then
-        print_warning "tmux not found - falling back to standard shell"
-      fi
-      if ! check_command_enhanced "claude"; then
-        print_warning "claude not found - falling back to standard shell"
-      fi
-      cd "$worktrees_dir/$name"
-      # Start a new shell in the worktree directory
-      exec "$SHELL"
-    fi
-  else
-    print_error "Failed to create worktree"
-    exit 1
-  fi
-}
-
-stop_worktree() {
-  name="$1"
-
-  # If no name provided, try to auto-detect from current directory
-  if [ -z "$name" ]; then
-    if is_in_worktree; then
-      # Extract worktree name from current path
-      current_dir="$(pwd)"
-      name="$(basename "$current_dir")"
-      print_info "Auto-detected worktree: $(print_branch "$name")"
-    else
-      print_error "Worktree name is required when not in a worktree directory"
-      printf "${DIM}Usage: baag stop <name> or run from within a worktree${NC}\n"
-      exit 1
-    fi
-  fi
-
-  if ! worktree_exists; then
-    print_error "Worktree '$(print_branch "$name")' does not exist"
-    exit 1
-  fi
-
-    print_header "Removing Worktree"
-
-  # Clean up tmux session first
-  cleanup_tmux_session "$name"
-
-  printf "Removing worktree $(print_branch "$name")\n"
-  git worktree remove "$worktrees_dir/$name"
-
-  if [ $? -eq 0 ]; then
-    # Get stored origin information before cleaning up
-    origin_dir=$(git config --get "worktree.$name.origin-dir" 2>/dev/null)
-    origin_branch=$(git config --get "worktree.$name.origin-branch" 2>/dev/null)
-
-    # Clean up stored configs
-    git config --unset "worktree.$name.base" 2>/dev/null
-    git config --unset "worktree.$name.origin-dir" 2>/dev/null
-    git config --unset "worktree.$name.origin-branch" 2>/dev/null
-
-    print_success "Worktree '$(print_branch "$name")' removed successfully"
-
-    # Return to original location if we have the information
-    if [ -n "$origin_dir" ] && [ -d "$origin_dir" ]; then
-      print_info "Returning to original directory: $(print_path "$origin_dir")"
-      cd "$origin_dir" || {
-        print_warning "Could not return to original directory"
-        exit 1
+  try {
+    // Check if install script exists and is executable
+    if (fs.existsSync('scripts/install')) {
+      // Try different ways to run the install script
+      try {
+        await $`command -v node`
+        printInfo('Using Node.js to run install script')
+        await $`node scripts/install`
+      } catch {
+        try {
+          await $`command -v zx`
+          printInfo('Using zx to run install script')
+          await $`zx scripts/install`
+        } catch {
+          printError('Neither Node.js nor zx found. Please install Node.js to update baag.')
+          process.exit(1)
+        }
       }
+    } else {
+      printError('Install script not found. Make sure you\'re in a baag repository.')
+      process.exit(1)
+    }
 
-      # Switch back to original branch if it exists and we're not already on it
-      current_branch="$(get_current_branch)"
-      if [ -n "$origin_branch" ] && [ "$current_branch" != "$origin_branch" ]; then
-        if git show-ref --verify --quiet "refs/heads/$origin_branch"; then
-          print_info "Switching back to original branch: $(print_branch "$origin_branch")"
-          git checkout "$origin_branch" >/dev/null 2>&1 || {
-            print_warning "Could not switch back to original branch"
-          }
-        fi
-      fi
-
-      # Start a new shell in the original location
-      print_info "You are back where you started!"
-      exec "$SHELL"
-    else
-      print_warning "Could not determine original location"
-    fi
-  else
-    print_error "Failed to remove worktree"
-    exit 1
-  fi
+    printSuccess('Update complete!')
+    console.log()
+    console.log(`${colors.bold}Updated features:`)
+    console.log('• Enhanced branding and help text')
+    console.log('• submit/finish command aliases')
+    console.log('• Horizontal tmux splits (--hs option)')
+    console.log('• Auto-detection for stop command')
+    console.log('• Origin tracking and return functionality')
+    console.log('• Modern ZX/Node.js implementation')
+    console.log()
+    console.log(`Run ${formatCommand('baag --help')} to see all available options.`)
+  } catch (error) {
+    printError('Update failed')
+    console.error(error.message)
+    process.exit(1)
+  }
 }
 
-list_worktrees() {
-  print_header "Git Worktrees"
+// Usage/help function
+function showUsage() {
+  showBanner()
+  console.log(`${colors.bold('Usage:')} baag ${colors.cyan('<command>')} ${colors.dim('[options] [name]')}`)
+  console.log()
 
-  # Enhanced worktree list with colors
-  git worktree list | while IFS= read -r line; do
-    # Parse the line to extract path, hash, and branch
-    path=$(echo "$line" | awk '{print $1}')
-    hash=$(echo "$line" | awk '{print $2}')
-    branch=$(echo "$line" | sed 's/.*\[\(.*\)\]/\1/')
-
-    if echo "$line" | grep -q "\["; then
-      printf "$(print_path "$path") $(print_hash "$hash") $(print_branch "$branch")\n"
-    else
-      printf "$(print_path "$path") $(print_hash "$hash")\n"
-    fi
-  done
-
-  print_header "Worktree Information"
-  # Get all worktree configs and group by worktree name
-  if git config --get-regexp "^worktree\..*\." >/dev/null 2>&1; then
-    # Get unique worktree names
-    git config --get-regexp "^worktree\..*\." | sed 's/worktree\.\([^.]*\)\..*/\1/' | sort -u | while read -r worktree_name; do
-      printf "  $(print_branch "$worktree_name"):\n"
-
-      # Show base branch
-      base_branch=$(git config --get "worktree.$worktree_name.base" 2>/dev/null)
-      if [ -n "$base_branch" ]; then
-        printf "    ${DIM}Base branch:${NC} $(print_branch "$base_branch")\n"
-      fi
-
-      # Show origin directory
-      origin_dir=$(git config --get "worktree.$worktree_name.origin-dir" 2>/dev/null)
-      if [ -n "$origin_dir" ]; then
-        printf "    ${DIM}Return to:${NC} $(print_path "$origin_dir")\n"
-      fi
-
-      # Show origin branch
-      origin_branch=$(git config --get "worktree.$worktree_name.origin-branch" 2>/dev/null)
-      if [ -n "$origin_branch" ] && [ "$origin_branch" != "$base_branch" ]; then
-        printf "    ${DIM}Return branch:${NC} $(print_branch "$origin_branch")\n"
-      fi
-
-      printf "\n"
-    done
-  else
-    printf "${DIM}  No worktree information stored${NC}\n"
-  fi
-
-  print_header "Active Tmux Sessions"
-  # Get all tmux session configs
-  if git config --get-regexp "^worktree\..*\.tmux-session$" >/dev/null 2>&1; then
-    git config --get-regexp "^worktree\..*\.tmux-session$" | while read -r key value; do
-      # Extract worktree name from key like "worktree.feature-auth.tmux-session"
-      worktree_name=$(echo "$key" | sed 's/worktree\.\(.*\)\.tmux-session/\1/')
-
-      # Check if session is actually running
-      if tmux has-session -t "$value" 2>/dev/null; then
-        printf "  $(print_branch "$worktree_name") ${DIM}→${NC} ${BOLD_CYAN}$value${NC} ${GREEN}(active)${NC}\n"
-      else
-        printf "  $(print_branch "$worktree_name") ${DIM}→${NC} ${DIM}$value (dead)${NC}\n"
-      fi
-    done
-  else
-    printf "${DIM}  No tmux sessions${NC}\n"
-  fi
+  console.log(`${colors.bold('Commands:')}`)
+  console.log(`  ${colors.boldGreen('start')} ${colors.cyan('<name>')} ${colors.dim('[options]')}        Create a new worktree and branch`)
+  console.log(`                              ${colors.dim('Remembers current branch as base for PR')}`)
+  console.log(`                              ${colors.dim('Auto-creates tmux session with Claude if available')}`)
+  console.log(`                              ${colors.dim('--base, --base-branch <branch>: Create from specific base branch')}`)
+  console.log(`                              ${colors.dim('--horizontal-split, --hs: Use horizontal tmux split')}`)
+  console.log(`  ${colors.boldRed('stop')} ${colors.cyan('[name]')}              Remove an existing worktree`)
+  console.log(`                              ${colors.dim('Auto-detects worktree if run from within one')}`)
+  console.log(`                              ${colors.dim('Cleans up tmux sessions automatically')}`)
+  console.log(`  ${colors.boldBlue('submit')}|${colors.boldBlue('finish')} ${colors.dim('[options]')}        Create PR and optionally clean up current worktree`)
+  console.log(`                              ${colors.dim('(submit and finish are the same command)')}`)
+  console.log(`                              ${colors.dim('--title <title>: PR title (default: use commit messages)')}`)
+  console.log(`                              ${colors.dim('--base-branch <branch>: target branch (default: remembered base)')}`)
+  console.log(`                              ${colors.dim('--no-verify: bypass git hooks when pushing')}`)
+  console.log(`                              ${colors.dim('--no-pr: only push, don\'t create pull request')}`)
+  console.log(`  ${colors.boldYellow('list')}|${colors.boldYellow('ls')}                     Show all existing worktrees and tmux sessions`)
+  console.log(`  ${colors.boldCyan('update')}                    Update baag to the latest version`)
+  console.log(`  ${colors.boldWhite('help')}|${colors.boldWhite('--help')}|${colors.boldWhite('-h')}            Show this help message`)
+  console.log(`  ${colors.boldMagenta('version')}|${colors.boldMagenta('--version')}|${colors.boldMagenta('-v')}        Show version information`)
+  console.log()
+  console.log(`${colors.bold('Examples:')}`)
+  console.log(`  ${colors.dim('baag start feature-branch     # Create and switch to new worktree')}`)
+  console.log(`  ${colors.dim('baag start new-ui --hs        # Create with horizontal tmux split')}`)
+  console.log(`  ${colors.dim('baag start hotfix --base main # Create from main branch instead of current')}`)
+  console.log(`  ${colors.dim('baag stop                     # Remove current worktree (auto-detected)')}`)
+  console.log(`  ${colors.dim('baag finish                   # Create PR and optionally cleanup')}`)
+  console.log(`  ${colors.dim('baag help                     # Show beautiful banner and help')}`)
+  console.log(`  ${colors.dim('baag update                   # Update to latest version')}`)
+  console.log(`  ${colors.dim('baag ls                       # List all worktrees')}`)
+  process.exit(1)
 }
 
-get_stored_base_branch() {
-  branch_name="$1"
-  main_repo="$(get_main_repo_dir)"
+// Main execution
+async function main() {
+  // Debug: log argv to understand the structure
+  // console.log('process.argv:', process.argv)
 
-  # Change to main repo to read config
-  if [ -n "$main_repo" ] && [ -d "$main_repo" ]; then
-    (cd "$main_repo" && git config --get "worktree.$branch_name.base" 2>/dev/null)
-  else
-    # Try from current location
-    git config --get "worktree.$branch_name.base" 2>/dev/null
-  fi
+  // For zx scripts, we need to handle arguments differently
+  const scriptArgs = process.argv.slice(2)
+  let command, args
+
+  // If running with 'zx bin/baag command', the script path is included
+  if (scriptArgs[0] && scriptArgs[0].includes('baag')) {
+    command = scriptArgs[1]
+    args = scriptArgs.slice(2)
+  } else {
+    // If running directly as './bin/baag command'
+    command = scriptArgs[0]
+    args = scriptArgs.slice(1)
+  }
+
+  // Handle commands that don't require git repository or clean status
+  switch (command) {
+    case 'help':
+    case '--help':
+    case '-h':
+      showUsage()
+      break
+    case 'version':
+    case '--version':
+    case '-v':
+      showVersion()
+      break
+    case 'update':
+      await updateBaag()
+      break
+  }
+
+  // Validate we're in a git repository before proceeding with other commands
+  if (!await checkGitRepository()) {
+    process.exit(1)
+  }
+
+  // Only check git status for commands that need clean working directory
+  if (['start'].includes(command)) {
+    if (!await checkGitStatus()) {
+      process.exit(1)
+    }
+  }
+
+  // Handle commands that require git repository
+  switch (command) {
+    case 'start':
+      await startWorktree(args)
+      break
+    case 'stop':
+      await stopWorktree(args)
+      break
+    case 'submit':
+    case 'finish':
+      await submitWorktree(args)
+      break
+    case 'list':
+    case 'ls':
+      await listWorktrees()
+      break
+    default:
+      if (!command) {
+        showUsage()
+      } else {
+        printError(`Unknown command: ${command}`)
+        console.log(`Run ${colors.blue('baag --help')} for usage information.`)
+        process.exit(1)
+      }
+      break
+  }
 }
 
-create_tmux_session() {
-  worktree_name="$1"
-  worktree_path="$2"
-  horizontal_split="$3"
-  session_name="worktree-$worktree_name"
-
-  if [ "$horizontal_split" = "true" ]; then
-    print_info "Creating tmux session with Claude integration (horizontal split)"
-    split_option=""
-  else
-    print_info "Creating tmux session with Claude integration (vertical split)"
-    split_option="-h"
-  fi
-
-  # Create new tmux session in detached mode
-  tmux new-session -d -s "$session_name" -c "$worktree_path"
-
-  # Split window (vertical by default, horizontal if requested)
-  tmux split-window $split_option -t "$session_name" -c "$worktree_path"
-
-  # Give tmux a moment to set up the panes
-  sleep 0.5
-
-  # Left pane: Start Claude (try multiple approaches)
-  claude_cmd=""
-  if [ -x "$HOME/.claude/local/claude" ]; then
-    # Use direct path to claude executable
-    claude_cmd="$HOME/.claude/local/claude"
-    print_info "Using Claude from: $claude_cmd"
-  else
-    # Try to source shell config first to load aliases
-    shell_config="$(detect_shell_config)"
-    if [ -f "$shell_config" ]; then
-      claude_cmd="source $shell_config && claude"
-      print_info "Loading shell config and starting Claude"
-    else
-      # Fallback: try claude directly
-      claude_cmd="claude"
-      print_info "Attempting to start Claude directly"
-    fi
-  fi
-
-  # Send the command to the left pane
-  tmux send-keys -t "$session_name:0.0" "$claude_cmd" Enter
-
-  # Give Claude a moment to start
-  sleep 0.5
-
-  # Right pane: Just the shell (already in the right directory)
-  tmux send-keys -t "$session_name:0.1" "clear" Enter
-
-  # Focus on the right pane (terminal)
-  tmux select-pane -t "$session_name:0.1"
-
-  # Store session name for cleanup
-  git config "worktree.$worktree_name.tmux-session" "$session_name"
-
-  # Attach to the session
-  print_success "Tmux session created: $(print_branch "$session_name")"
-  if [ "$horizontal_split" = "true" ]; then
-    printf "Top pane: ${BOLD_CYAN}Claude${NC} | Bottom pane: ${BOLD_GREEN}Terminal${NC}\n"
-  else
-    printf "Left pane: ${BOLD_CYAN}Claude${NC} | Right pane: ${BOLD_GREEN}Terminal${NC}\n"
-  fi
-  tmux attach-session -t "$session_name"
-}
-
-cleanup_tmux_session() {
-  worktree_name="$1"
-  main_repo="$(get_main_repo_dir)"
-
-  # Get stored session name
-  if [ -n "$main_repo" ] && [ -d "$main_repo" ]; then
-    session_name=$(cd "$main_repo" && git config --get "worktree.$worktree_name.tmux-session" 2>/dev/null)
-  else
-    session_name=$(git config --get "worktree.$worktree_name.tmux-session" 2>/dev/null)
-  fi
-
-  if [ -n "$session_name" ] && tmux has-session -t "$session_name" 2>/dev/null; then
-    print_info "Cleaning up tmux session: $(print_branch "$session_name")"
-    tmux kill-session -t "$session_name"
-
-    # Remove session config
-    if [ -n "$main_repo" ] && [ -d "$main_repo" ]; then
-      (cd "$main_repo" && git config --unset "worktree.$worktree_name.tmux-session" 2>/dev/null)
-    else
-      git config --unset "worktree.$worktree_name.tmux-session" 2>/dev/null
-    fi
-  fi
-}
-
-submit_worktree() {
-  # Parse arguments
-  pr_title=""
-  base_branch=""
-  base_branch_specified=false
-  no_verify=false
-  no_pr=false
-
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      --title)
-        if [ -n "$2" ]; then
-          pr_title="$2"
-          shift 2
-        else
-          print_error "--title requires a value"
-          exit 1
-        fi
-        ;;
-      --base-branch)
-        if [ -n "$2" ]; then
-          base_branch="$2"
-          base_branch_specified=true
-          shift 2
-        else
-          print_error "--base-branch requires a value"
-          exit 1
-        fi
-        ;;
-      --no-verify)
-        no_verify=true
-        shift
-        ;;
-      --no-pr)
-        no_pr=true
-        shift
-        ;;
-      *)
-        print_error "Unknown argument: $1"
-        usage
-        ;;
-    esac
-  done
-
-  if ! is_in_worktree; then
-    print_error "This command should be run from within a worktree"
-    printf "${DIM}Current directory doesn't appear to be a worktree${NC}\n"
-    exit 1
-  fi
-
-  current_branch="$(get_current_branch)"
-  if [ -z "$current_branch" ]; then
-    print_error "Could not determine current branch"
-    exit 1
-  fi
-
-  # If base branch not specified, try to get stored base branch
-  if [ "$base_branch_specified" = false ]; then
-    stored_base="$(get_stored_base_branch "$current_branch")"
-    if [ -n "$stored_base" ]; then
-      base_branch="$stored_base"
-      print_info "Using remembered base branch: $(print_branch "$base_branch")"
-    else
-      base_branch="main"
-      print_warning "No remembered base branch, defaulting to: $(print_branch "$base_branch")"
-    fi
-  fi
-
-  if [ "$no_pr" = true ]; then
-    print_header "Pushing Changes"
-    printf "Current branch: $(print_branch "$current_branch")\n"
-    if [ "$no_verify" = true ]; then
-      print_warning "Bypassing git hooks (--no-verify)"
-    fi
-  else
-    print_header "Creating Pull Request"
-    printf "Current branch: $(print_branch "$current_branch")\n"
-    printf "Base branch: $(print_branch "$base_branch")\n"
-    if [ -n "$pr_title" ]; then
-      printf "PR title: ${BOLD_WHITE}$pr_title${NC}\n"
-    fi
-    if [ "$no_verify" = true ]; then
-      print_warning "Bypassing git hooks (--no-verify)"
-    fi
-  fi
-
-  print_info "Pushing branch to origin..."
-
-  # Build git push command
-  push_cmd="git push -u origin $current_branch"
-  if [ "$no_verify" = true ]; then
-    push_cmd="$push_cmd --no-verify"
-  fi
-
-  # Push the current branch to origin
-  if ! eval "$push_cmd"; then
-    print_error "Failed to push branch to origin"
-    exit 1
-  fi
-
-  # Skip PR creation if --no-pr flag is set
-  if [ "$no_pr" = true ]; then
-    print_success "Branch pushed successfully!"
-    print_info "You can create a pull request manually when ready"
-
-    printf "\n${BOLD_YELLOW}Do you want to remove this worktree?${NC} ${DIM}(y/N)${NC} "
-    read -r response
-
-    if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
-      main_repo="$(get_main_repo_dir)"
-      current_worktree="$(pwd)"
-      worktree_name="$(basename "$current_worktree")"
-
-            print_header "Cleaning Up"
-
-      # Clean up tmux session first
-      cleanup_tmux_session "$current_branch"
-
-      printf "Changing to main repository: $(print_path "$main_repo")\n"
-      cd "$main_repo" || exit 1
-
-      printf "Removing worktree: $(print_branch "$worktree_name")\n"
-      git worktree remove "$current_worktree"
-
-      if [ $? -eq 0 ]; then
-        # Clean up stored base branch config
-        git config --unset "worktree.$current_branch.base" 2>/dev/null
-        print_success "Worktree removed successfully!"
-        print_info "You are now in the main repository"
-        # Start a new shell in the main repo
-        exec "$SHELL"
-      else
-        print_error "Failed to remove worktree"
-        exit 1
-      fi
-    else
-      print_info "Worktree kept. You can remove it later with: ${BOLD}baag stop $(print_branch "$current_branch")${NC}"
-    fi
-    return
-  fi
-
-  # GitHub CLI is required for PR creation
-  if ! check_command_enhanced "gh"; then
-    print_error "GitHub CLI (gh) is not installed"
-    printf "${DIM}Please install it from: https://cli.github.com/${NC}\n"
-    printf "${DIM}Or use --no-pr flag to skip PR creation${NC}\n"
-    exit 1
-  fi
-
-  print_info "Creating pull request..."
-
-  # Build gh pr create command
-  gh_cmd="gh pr create --base $base_branch --head $current_branch"
-
-  if [ -n "$pr_title" ]; then
-    gh_cmd="$gh_cmd --title \"$pr_title\" --body \"\""
-  else
-    gh_cmd="$gh_cmd --fill"
-  fi
-
-  # Create PR using GitHub CLI
-  if eval "$gh_cmd"; then
-    print_success "Pull request created successfully!"
-
-    printf "\n${BOLD_YELLOW}Do you want to remove this worktree?${NC} ${DIM}(y/N)${NC} "
-    read -r response
-
-    if [ "$response" = "y" ] || [ "$response" = "Y" ]; then
-      main_repo="$(get_main_repo_dir)"
-      current_worktree="$(pwd)"
-      worktree_name="$(basename "$current_worktree")"
-
-      print_header "Cleaning Up"
-
-      # Clean up tmux session first
-      cleanup_tmux_session "$current_branch"
-
-      printf "Changing to main repository: $(print_path "$main_repo")\n"
-      cd "$main_repo" || exit 1
-
-      printf "Removing worktree: $(print_branch "$worktree_name")\n"
-      git worktree remove "$current_worktree"
-
-      if [ $? -eq 0 ]; then
-        # Clean up stored configs
-        git config --unset "worktree.$current_branch.base" 2>/dev/null
-        git config --unset "worktree.$current_branch.origin-dir" 2>/dev/null
-        git config --unset "worktree.$current_branch.origin-branch" 2>/dev/null
-        print_success "Worktree removed successfully!"
-        print_info "You are now in the main repository"
-        # Start a new shell in the main repo
-        exec "$SHELL"
-      else
-        print_error "Failed to remove worktree"
-        exit 1
-      fi
-    else
-      print_info "Worktree kept. You can remove it later with: ${BOLD}baag stop $(print_branch "$current_branch")${NC}"
-    fi
-  else
-    print_error "Failed to create pull request"
-    exit 1
-  fi
-}
-
-# Main logic
-case "$command" in
-  start)
-    # Pass all arguments except the first one (which is 'start')
-    shift
-    start_worktree "$@"
-    ;;
-  stop)
-    stop_worktree "$2"
-    ;;
-  submit|finish)
-    # Pass all arguments except the first one (which is 'submit' or 'finish')
-    shift
-    submit_worktree "$@"
-    ;;
-  list|ls)
-    list_worktrees
-    ;;
-  update)
-    update_baag
-    ;;
-  help|--help|-h)
-    usage
-    ;;
-  version|--version|-v)
-    show_version
-    ;;
-  *)
-    usage
-    ;;
-esac
+// Run the main function
+await main()
