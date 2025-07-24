@@ -186,11 +186,12 @@ async function verifyInstallation() {
 function showUsageInfo() {
   printHeader("Installation Complete")
 
-  console.log(boxen([
+  // Build the complete content including optional dependencies
+  const mainContent = [
     chalk.green(figures.tick) + ' Baag has been installed successfully!',
     '',
     chalk.bold('Usage:'),
-    '  baag start <name>     # Create new worktree',
+    '  baag start <n>     # Create new worktree',
     '  baag stop [name]      # Remove worktree',
     '  baag list            # List all worktrees',
     '  baag submit|finish   # Create PR and cleanup',
@@ -201,23 +202,28 @@ function showUsageInfo() {
     `2. Run: ${chalk.blue('baag start feature-branch')}`,
     '3. Work on your feature',
     `4. Run: ${chalk.blue('baag submit')} or ${chalk.blue('baag finish')} to create a PR`
-  ].join('\n'), {
+  ]
+
+  // Add optional dependencies if any exist
+  if (OPTIONAL_DEPS.length > 0) {
+    mainContent.push('')
+    mainContent.push(chalk.bold('Optional Dependencies:'))
+    for (const dep of OPTIONAL_DEPS) {
+      const [cmd, info] = dep.split('|')
+      mainContent.push(`  ${chalk.yellow(cmd)}: ${info}`)
+    }
+  }
+
+  // Add help information
+  mainContent.push('')
+  mainContent.push(`For more information, run: ${chalk.blue('baag --help')}`)
+
+  console.log(boxen(mainContent.join('\n'), {
     padding: 1,
     margin: { top: 0, bottom: 1 },
     borderStyle: 'double',
     borderColor: 'green'
   }))
-
-  if (OPTIONAL_DEPS.length > 0) {
-    console.log(chalk.dim('Install optional dependencies for enhanced features:'))
-    for (const dep of OPTIONAL_DEPS) {
-      const [cmd, info] = dep.split('|')
-      console.log(`  ${chalk.yellow(cmd)}: ${info}`)
-    }
-    console.log()
-  }
-
-  console.log(`For more information, run: ${chalk.blue('baag --help')}`)
 }
 
 // Main installation flow
