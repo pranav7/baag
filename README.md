@@ -49,21 +49,42 @@ my-project/
 
 ## Installation
 
-### ⚡️ Quick
+### ⚡️ Quick Install (Recommended)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/pranav7/baag/main/scripts/install | node
+# Bootstrap install (gets baag command available)
+curl -fsSL https://raw.githubusercontent.com/pranav7/baag/main/install.sh | bash
+
+# Full setup (dependency checks and configuration)
+baag setup
 ```
 
-### 🐢 Manual
+### 🐢 Manual Install
 
 ```bash
 # Clone the repository
 git clone https://github.com/pranav7/baag.git
 cd baag
 
-# Make install script executable and run it
-chmod +x scripts/install && ./scripts/install
+# Run bootstrap installer
+./install.sh
+
+# Then run full setup
+baag setup
+```
+
+### 🔄 Updating
+
+```bash
+# Update to latest version
+baag setup
+```
+
+### 🩺 Health Check
+
+```bash
+# Check system dependencies and health
+baag check    # or: baag doctor
 ```
 
 ## Dependencies
@@ -71,6 +92,8 @@ chmod +x scripts/install && ./scripts/install
 **Required:**
 - git
 - node
-- tmux (for session management)
-- gh (for PR creation)
-- claude (default) / gemini / codex (for AI agents)
+
+**Optional (enhances features):**
+- tmux (enables multi-pane development environment)
+- gh (enables PR creation)
+- claude (enables AI integration)
