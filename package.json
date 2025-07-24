@@ -9,7 +9,7 @@
     "test": "node bin/baag.mjs version && echo 'Basic functionality test passed'",
     "lint": "echo 'No linting configured yet'",
     "dev-install": "mkdir -p ~/.local/bin && ln -sf $(pwd)/bin/baag.mjs ~/.local/bin/baag",
-    "dev-uninstall": "rm -f ~/.local/bin/baag ~/.local/bin/wt"
+    "dev-uninstall": "rm -f ~/.local/bin/baag"
   },
   "keywords": [],
   "author": "",

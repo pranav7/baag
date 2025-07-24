@@ -1,46 +1,41 @@
 #!/usr/bin/env zx
 
 import { $, path, fs, os } from 'zx'
+import chalk from 'chalk'
+import boxen from 'boxen'
+import figures from 'figures'
 
 $.verbose = false
 
-// Color codes and formatting
-const colors = {
-  RED: '\x1b[0;31m',
-  GREEN: '\x1b[0;32m',
-  YELLOW: '\x1b[0;33m',
-  BLUE: '\x1b[0;34m',
-  BOLD: '\x1b[1m',
-  DIM: '\x1b[2m',
-  NC: '\x1b[0m' // No Color
-}
-
-// Print functions
+// Enhanced print functions using modern CLI libraries
 function printSuccess(message) {
-  console.log(`${colors.GREEN}✓${colors.NC} ${message}`)
+  console.log(chalk.green(figures.tick) + ' ' + message)
 }
 
 function printError(message) {
-  console.error(`${colors.RED}✗${colors.NC} ${message}`)
+  console.error(chalk.red(figures.cross) + ' ' + message)
 }
 
 function printInfo(message) {
-  console.log(`${colors.BLUE}ℹ${colors.NC} ${message}`)
+  console.log(chalk.blue(figures.info) + ' ' + message)
 }
 
 function printWarning(message) {
-  console.log(`${colors.YELLOW}⚠${colors.NC} ${message}`)
+  console.log(chalk.yellow(figures.warning) + ' ' + message)
 }
 
 function printHeader(message) {
-  console.log(`\n${colors.BOLD}${message}${colors.NC}`)
-  console.log(`${colors.DIM}${'─'.repeat(message.length)}${colors.NC}`)
+  console.log(boxen(chalk.bold.cyan(message), {
+    padding: { top: 0, bottom: 0, left: 1, right: 1 },
+    margin: { top: 1, bottom: 0 },
+    borderStyle: 'round',
+    borderColor: 'cyan'
+  }))
 }
 
 // Installation configuration
 const INSTALL_DIR = path.join(os.homedir(), '.local', 'bin')
 const SCRIPT_NAME = "baag"
-const ALIAS_NAME = "wt"
 
 // Dependency tracking
 const MISSING_DEPS = []
@@ -79,7 +74,7 @@ async function checkDependencies() {
     printHeader("Missing Required Dependencies")
     for (const dep of MISSING_DEPS) {
       const [cmd, info] = dep.split('|')
-      console.log(`  ${colors.RED}${cmd}${colors.NC}: ${info}`)
+      console.log(`  ${chalk.red(cmd)}: ${info}`)
     }
     console.log("\nPlease install the required dependencies and run this script again.")
     process.exit(1)
@@ -87,12 +82,12 @@ async function checkDependencies() {
 
   if (OPTIONAL_DEPS.length > 0) {
     printHeader("Optional Dependencies")
-    console.log(`${colors.DIM}The following optional dependencies can enhance your workflow:${colors.NC}`)
+    console.log(chalk.dim('The following optional dependencies can enhance your workflow:'))
     for (const dep of OPTIONAL_DEPS) {
       const [cmd, info] = dep.split('|')
-      console.log(`  ${colors.YELLOW}${cmd}${colors.NC}: ${info}`)
+      console.log(`  ${chalk.yellow(cmd)}: ${info}`)
     }
-    console.log(`\n${colors.DIM}You can install these later to enable additional features.${colors.NC}`)
+    console.log('\n' + chalk.dim('You can install these later to enable additional features.'))
   }
 }
 
@@ -113,7 +108,7 @@ async function setupInstallDirectory() {
   } else {
     printWarning(`${INSTALL_DIR} is not in your PATH`)
     printInfo("Add the following to your shell configuration file (~/.bashrc, ~/.zshrc, etc.):")
-    console.log(`${colors.DIM}export PATH="$PATH:${INSTALL_DIR}"${colors.NC}`)
+    console.log(chalk.dim(`export PATH="$PATH:${INSTALL_DIR}"`))
   }
 }
 
@@ -123,7 +118,6 @@ async function installScript() {
   const scriptDir = path.dirname(new URL(import.meta.url).pathname)
   const sourceScript = path.join(scriptDir, '..', 'bin', `${SCRIPT_NAME}.mjs`)
   const targetScript = path.join(INSTALL_DIR, SCRIPT_NAME)
-  const targetAlias = path.join(INSTALL_DIR, ALIAS_NAME)
 
   if (!fs.existsSync(sourceScript)) {
     printError(`Source script not found: ${sourceScript}`)
@@ -136,34 +130,18 @@ async function installScript() {
   await $`cp ${sourceScript} ${targetScript}`
   await $`chmod +x ${targetScript}`
   printSuccess("Main script installed")
-
-  // Create alias
-  printInfo(`Creating alias: ${ALIAS_NAME} -> ${SCRIPT_NAME}`)
-  const aliasContent = `#!/bin/bash\n# Baag alias\nexec baag "$@"`
-  await fs.writeFile(targetAlias, aliasContent)
-  await $`chmod +x ${targetAlias}`
-  printSuccess("Alias created")
 }
 
 async function verifyInstallation() {
   printHeader("Verifying Installation")
 
   const targetScript = path.join(INSTALL_DIR, SCRIPT_NAME)
-  const targetAlias = path.join(INSTALL_DIR, ALIAS_NAME)
 
   try {
     await $`test -x ${targetScript}`
     printSuccess("Main script is executable")
   } catch {
     printError("Main script is not executable")
-    return false
-  }
-
-  try {
-    await $`test -x ${targetAlias}`
-    printSuccess("Alias is executable")
-  } catch {
-    printError("Alias is not executable")
     return false
   }
 
@@ -187,34 +165,38 @@ async function verifyInstallation() {
 function showUsageInfo() {
   printHeader("Installation Complete")
 
-  console.log("Baag has been installed successfully!\n")
-
-  console.log(`${colors.BOLD}Usage:${colors.NC}`)
-  console.log("  baag start <name>            # Create new worktree")
-  console.log("  baag stop <name>             # Remove worktree")
-  console.log("  baag list                    # List all worktrees")
-  console.log("  baag submit                  # Create PR and cleanup")
-  console.log("  baag version                 # Show version\n")
-
-  console.log(`${colors.BOLD}Alias:${colors.NC}`)
-  console.log("  wt <command>                 # Short alias for baag\n")
-
-  console.log(`${colors.BOLD}Getting Started:${colors.NC}`)
-  console.log("1. Navigate to any git repository")
-  console.log(`2. Run: ${colors.BLUE}baag start feature-branch${colors.NC}`)
-  console.log("3. Work on your feature")
-  console.log(`4. Run: ${colors.BLUE}baag submit${colors.NC} to create a PR\n`)
+  console.log(boxen([
+    chalk.green(figures.tick) + ' Baag has been installed successfully!',
+    '',
+    chalk.bold('Usage:'),
+    '  baag start <name>     # Create new worktree',
+    '  baag stop [name]      # Remove worktree', 
+    '  baag list            # List all worktrees',
+    '  baag submit          # Create PR and cleanup',
+    '  baag version         # Show version',
+    '',
+    chalk.bold('Getting Started:'),
+    '1. Navigate to any git repository',
+    `2. Run: ${chalk.blue('baag start feature-branch')}`,
+    '3. Work on your feature',
+    `4. Run: ${chalk.blue('baag submit')} to create a PR`
+  ].join('\n'), {
+    padding: 1,
+    margin: { top: 0, bottom: 1 },
+    borderStyle: 'double',
+    borderColor: 'green'
+  }))
 
   if (OPTIONAL_DEPS.length > 0) {
-    console.log(`${colors.DIM}Install optional dependencies for enhanced features:${colors.NC}`)
+    console.log(chalk.dim('Install optional dependencies for enhanced features:'))
     for (const dep of OPTIONAL_DEPS) {
       const [cmd, info] = dep.split('|')
-      console.log(`  ${colors.YELLOW}${cmd}${colors.NC}: ${info}`)
+      console.log(`  ${chalk.yellow(cmd)}: ${info}`)
     }
     console.log()
   }
 
-  console.log(`For more information, run: ${colors.BLUE}baag --help${colors.NC}`)
+  console.log(`For more information, run: ${chalk.blue('baag --help')}`)
 }
 
 // Main installation flow
@@ -224,7 +206,7 @@ async function main() {
   switch (command) {
     case 'install':
       printHeader("Baag Installation")
-      console.log(`${colors.DIM}Enhanced git worktree workflows with tmux integration${colors.NC}`)
+      console.log(chalk.dim('Enhanced git worktree workflows with tmux integration'))
 
       await checkDependencies()
       await setupInstallDirectory()
