@@ -2,7 +2,6 @@
 
 import { $ } from 'zx'
 import path from 'path'
-import os from 'os'
 import { fileURLToPath } from 'url'
 
 // Get script directory for module imports
@@ -20,7 +19,7 @@ if (__dirname.includes('.local/lib/baag')) {
 const { printError, colors } = await import(path.join(libDir, 'colors.mjs'))
 const { showBanner, showVersion } = await import(path.join(libDir, 'banner.mjs'))
 const { checkGitRepository, checkGitStatus } = await import(path.join(libDir, 'git-utils.mjs'))
-const { startWorktree, stopWorktree, listWorktrees, submitWorktree } = await import(path.join(libDir, 'worktree-utils.mjs'))
+const { startWorktree, stopWorktree, listWorktrees, submitWorktree, cleanupWorktrees } = await import(path.join(libDir, 'worktree-utils.mjs'))
 
 // Update functionality
 async function updateBaag() {
@@ -114,6 +113,8 @@ function showUsage() {
   console.log(`                              ${colors.dim('--no-verify: bypass git hooks when pushing')}`)
   console.log(`                              ${colors.dim('--no-pr: only push, don\'t create pull request')}`)
   console.log(`  ${colors.boldYellow('list')}|${colors.boldYellow('ls')}                     Show all existing worktrees and tmux sessions`)
+  console.log(`  ${colors.boldMagenta('cleanup')}                   Clean up orphaned worktree directories and configs`)
+  console.log(`                              ${colors.dim('Removes leftover directories, git configs, and dead tmux sessions')}`)
   console.log(`  ${colors.boldCyan('update')}                    Update baag to the latest version`)
   console.log(`  ${colors.boldWhite('help')}|${colors.boldWhite('--help')}|${colors.boldWhite('-h')}            Show this help message`)
   console.log(`  ${colors.boldMagenta('version')}|${colors.boldMagenta('--version')}|${colors.boldMagenta('-v')}        Show version information`)
@@ -127,6 +128,7 @@ function showUsage() {
   console.log(`  ${colors.dim('baag help                     # Show beautiful banner and help')}`)
   console.log(`  ${colors.dim('baag update                   # Update to latest version')}`)
   console.log(`  ${colors.dim('baag ls                       # List all worktrees')}`)
+  console.log(`  ${colors.dim('baag cleanup                  # Clean up orphaned directories and configs')}`)
   process.exit(1)
 }
 
@@ -193,6 +195,9 @@ async function main() {
     case 'list':
     case 'ls':
       await listWorktrees()
+      break
+    case 'cleanup':
+      await cleanupWorktrees()
       break
     default:
       if (!command) {
