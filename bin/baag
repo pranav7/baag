@@ -22,38 +22,104 @@ fi
 # Get the worktrees directory
 worktrees_dir="$(get_worktrees_dir)"
 
+show_banner() {
+  printf "\n"
+  printf "       ${BOLD_YELLOW}██████╗  █████╗  █████╗  ██████╗${NC}\n"
+  printf "       ${BOLD_YELLOW}██╔══██╗██╔══██╗██╔══██╗██╔════╝${NC}\n"
+  printf "       ${BOLD_YELLOW}██████╔╝███████║███████║██║  ███╗${NC}\n"
+  printf "       ${BOLD_YELLOW}██╔══██╗██╔══██║██╔══██║██║   ██║${NC}\n"
+  printf "       ${BOLD_YELLOW}██████╔╝██║  ██║██║  ██║╚██████╔╝${NC}\n"
+  printf "       ${BOLD_YELLOW}╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝${NC}\n"
+  printf "\n"
+  printf "         ${BOLD_WHITE}AI Terminal Agent Automation${NC}\n"
+  printf "\n"
+}
+
 usage() {
-  print_header "Baag - Git Worktree Manager"
+  show_banner
   printf "${BOLD}Usage:${NC} baag ${CYAN}<command>${NC} ${DIM}[options] [name]${NC}\n\n"
 
   printf "${BOLD}Commands:${NC}\n"
-  printf "  ${BOLD_GREEN}start${NC} ${CYAN}<n>${NC}                Create a new worktree and branch\n"
+  printf "  ${BOLD_GREEN}start${NC} ${CYAN}<name>${NC} ${DIM}[options]${NC}        Create a new worktree and branch\n"
   printf "                              ${DIM}Remembers current branch as base for PR${NC}\n"
   printf "                              ${DIM}Auto-creates tmux session with Claude if available${NC}\n"
-  printf "  ${BOLD_RED}stop${NC} ${CYAN}[n]${NC}                 Remove an existing worktree\n"
+  printf "                              ${DIM}--horizontal-split, --hs: Use horizontal tmux split${NC}\n"
+  printf "  ${BOLD_RED}stop${NC} ${CYAN}[name]${NC}              Remove an existing worktree\n"
   printf "                              ${DIM}Auto-detects worktree if run from within one${NC}\n"
   printf "                              ${DIM}Cleans up tmux sessions automatically${NC}\n"
   printf "  ${BOLD_BLUE}submit${NC}|${BOLD_BLUE}finish${NC} ${DIM}[options]${NC}        Create PR and optionally clean up current worktree\n"
+  printf "                              ${DIM}(submit and finish are the same command)${NC}\n"
   printf "                              ${DIM}--title <title>: PR title (default: use commit messages)${NC}\n"
   printf "                              ${DIM}--base-branch <branch>: target branch (default: remembered base)${NC}\n"
   printf "                              ${DIM}--no-verify: bypass git hooks when pushing${NC}\n"
   printf "                              ${DIM}--no-pr: only push, don't create pull request${NC}\n"
   printf "  ${BOLD_YELLOW}list${NC}|${BOLD_YELLOW}ls${NC}                     Show all existing worktrees and tmux sessions\n"
+  printf "  ${BOLD_CYAN}update${NC}                    Update baag to the latest version\n"
+  printf "  ${BOLD_WHITE}help${NC}|${BOLD_WHITE}--help${NC}|${BOLD_WHITE}-h${NC}            Show this help message\n"
   printf "  ${BOLD_MAGENTA}version${NC}|${BOLD_MAGENTA}--version${NC}|${BOLD_MAGENTA}-v${NC}        Show version information\n"
   printf "\n${BOLD}Examples:${NC}\n"
   printf "  ${DIM}baag start feature-branch     # Create and switch to new worktree${NC}\n"
+  printf "  ${DIM}baag start new-ui --hs        # Create with horizontal tmux split${NC}\n"
   printf "  ${DIM}baag stop                     # Remove current worktree (auto-detected)${NC}\n"
   printf "  ${DIM}baag finish                   # Create PR and optionally cleanup${NC}\n"
+  printf "  ${DIM}baag help                     # Show beautiful banner and help${NC}\n"
+  printf "  ${DIM}baag update                   # Update to latest version${NC}\n"
   printf "  ${DIM}baag ls                       # List all worktrees${NC}\n"
   exit 1
 }
 
 show_version() {
-  print_header "Baag - Git Worktree Manager"
+  show_banner
   printf "Version: ${BOLD_GREEN}0.0.1${NC}\n"
   printf "Author: ${BOLD_CYAN}https://github.com/your-username/baag${NC}\n"
   printf "License: ${BOLD_YELLOW}MIT${NC}\n"
   exit 0
+}
+
+update_baag() {
+  print_header "Updating Baag"
+
+  # Check if we're in a baag repository
+  if [ ! -f "bin/baag" ] || [ ! -f "scripts/install" ]; then
+    printf "${YELLOW}Update from a baag repository:${NC}\n\n"
+    printf "1. Clone or navigate to a baag repository:\n"
+    printf "   ${BLUE}git clone <repository-url>${NC}\n"
+    printf "   ${BLUE}cd baag${NC}\n\n"
+    printf "2. Run the update command:\n"
+    printf "   ${BLUE}baag update${NC}\n\n"
+    printf "3. Or run the install script directly:\n"
+    printf "   ${BLUE}node scripts/install${NC}\n\n"
+    exit 1
+  fi
+
+  print_info "Running install script to update baag..."
+
+  # Check if install script exists and is executable
+  if [ -f "scripts/install" ]; then
+    # Try different ways to run the install script
+    if command -v node >/dev/null 2>&1; then
+      print_info "Using Node.js to run install script"
+      node scripts/install
+    elif command -v zx >/dev/null 2>&1; then
+      print_info "Using zx to run install script"
+      zx scripts/install
+    else
+      print_error "Neither Node.js nor zx found. Please install Node.js to update baag."
+      exit 1
+    fi
+  else
+    print_error "Install script not found. Make sure you're in a baag repository."
+    exit 1
+  fi
+
+  print_success "Update complete!"
+  printf "\n${BOLD}Updated features:${NC}\n"
+  printf "• Enhanced branding and help text\n"
+  printf "• submit/finish command aliases\n"
+  printf "• Horizontal tmux splits (--hs option)\n"
+  printf "• Auto-detection for stop command\n"
+  printf "• Origin tracking and return functionality\n"
+  printf "\nRun ${BLUE}baag --help${NC} to see all available options.\n"
 }
 
 ensure_worktrees_dir() {
@@ -72,7 +138,32 @@ branch_exists() {
 }
 
 start_worktree() {
-  name="$1"
+  # Parse arguments
+  local horizontal_split=false
+  local name=""
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --horizontal-split|--hs)
+        horizontal_split=true
+        shift
+        ;;
+      -*)
+        print_error "Unknown option: $1"
+        usage
+        ;;
+      *)
+        if [ -z "$name" ]; then
+          name="$1"
+        else
+          print_error "Too many arguments"
+          usage
+        fi
+        shift
+        ;;
+    esac
+  done
+
   if [ -z "$name" ]; then
     print_error "Worktree name is required"
     usage
@@ -117,7 +208,7 @@ start_worktree() {
     # Check if tmux and claude are available for enhanced workflow
     if check_tmux_claude; then
       print_info "Both tmux and claude detected - creating integrated development environment"
-      create_tmux_session "$name" "$worktrees_dir/$name"
+      create_tmux_session "$name" "$worktrees_dir/$name" "$horizontal_split"
     else
       printf "Changing directory to: $(print_path "$worktrees_dir/$name")\n"
       if ! check_command_enhanced "tmux"; then
@@ -292,15 +383,22 @@ get_stored_base_branch() {
 create_tmux_session() {
   worktree_name="$1"
   worktree_path="$2"
+  horizontal_split="$3"
   session_name="worktree-$worktree_name"
 
-  print_info "Creating tmux session with Claude integration"
+  if [ "$horizontal_split" = "true" ]; then
+    print_info "Creating tmux session with Claude integration (horizontal split)"
+    split_option=""
+  else
+    print_info "Creating tmux session with Claude integration (vertical split)"
+    split_option="-h"
+  fi
 
   # Create new tmux session in detached mode
   tmux new-session -d -s "$session_name" -c "$worktree_path"
 
-  # Split window vertically (creates left and right panes)
-  tmux split-window -h -t "$session_name" -c "$worktree_path"
+  # Split window (vertical by default, horizontal if requested)
+  tmux split-window $split_option -t "$session_name" -c "$worktree_path"
 
   # Give tmux a moment to set up the panes
   sleep 0.5
@@ -341,7 +439,11 @@ create_tmux_session() {
 
   # Attach to the session
   print_success "Tmux session created: $(print_branch "$session_name")"
-  printf "Left pane: ${BOLD_CYAN}Claude${NC} | Right pane: ${BOLD_GREEN}Terminal${NC}\n"
+  if [ "$horizontal_split" = "true" ]; then
+    printf "Top pane: ${BOLD_CYAN}Claude${NC} | Bottom pane: ${BOLD_GREEN}Terminal${NC}\n"
+  else
+    printf "Left pane: ${BOLD_CYAN}Claude${NC} | Right pane: ${BOLD_GREEN}Terminal${NC}\n"
+  fi
   tmux attach-session -t "$session_name"
 }
 
@@ -577,7 +679,9 @@ submit_worktree() {
 # Main logic
 case "$command" in
   start)
-    start_worktree "$2"
+    # Pass all arguments except the first one (which is 'start')
+    shift
+    start_worktree "$@"
     ;;
   stop)
     stop_worktree "$2"
@@ -589,6 +693,12 @@ case "$command" in
     ;;
   list|ls)
     list_worktrees
+    ;;
+  update)
+    update_baag
+    ;;
+  help|--help|-h)
+    usage
     ;;
   version|--version|-v)
     show_version

@@ -35,6 +35,7 @@ function printHeader(message) {
 
 // Installation configuration
 const INSTALL_DIR = path.join(os.homedir(), '.local', 'bin')
+const LIB_DIR = path.join(os.homedir(), '.local', 'lib', 'baag')
 const SCRIPT_NAME = "baag"
 
 // Dependency tracking
@@ -101,6 +102,13 @@ async function setupInstallDirectory() {
     printSuccess(`Directory exists: ${INSTALL_DIR}`)
   }
 
+  if (!fs.existsSync(LIB_DIR)) {
+    printInfo(`Creating library directory: ${LIB_DIR}`)
+    await $`mkdir -p ${LIB_DIR}`
+  } else {
+    printSuccess(`Library directory exists: ${LIB_DIR}`)
+  }
+
   // Check if install directory is in PATH
   const pathEnv = process.env.PATH || ""
   if (pathEnv.includes(INSTALL_DIR)) {
@@ -113,11 +121,13 @@ async function setupInstallDirectory() {
 }
 
 async function installScript() {
-  printHeader("Installing Git Worktree Manager")
+  printHeader("Installing Baag")
 
   const scriptDir = path.dirname(new URL(import.meta.url).pathname)
-  const sourceScript = path.join(scriptDir, '..', 'bin', `${SCRIPT_NAME}.mjs`)
+  const sourceScript = path.join(scriptDir, '..', 'bin', SCRIPT_NAME)
+  const sourceLib = path.join(scriptDir, '..', 'lib', 'common.sh')
   const targetScript = path.join(INSTALL_DIR, SCRIPT_NAME)
+  const targetLib = path.join(LIB_DIR, 'common.sh')
 
   if (!fs.existsSync(sourceScript)) {
     printError(`Source script not found: ${sourceScript}`)
@@ -125,9 +135,20 @@ async function installScript() {
     process.exit(1)
   }
 
-  // Copy main script
+  if (!fs.existsSync(sourceLib)) {
+    printError(`Source library not found: ${sourceLib}`)
+    printInfo("Make sure you're running this script from the correct directory")
+    process.exit(1)
+  }
+
+  // Copy library first
+  printInfo(`Installing common library to ${targetLib}`)
+  await $`cp ${sourceLib} ${targetLib}`
+  printSuccess("Library installed")
+
+  // Copy main script and update library path
   printInfo(`Installing ${SCRIPT_NAME} to ${targetScript}`)
-  await $`cp ${sourceScript} ${targetScript}`
+  await $`sed 's|\\$SCRIPT_DIR/../lib/common.sh|${targetLib}|g' ${sourceScript} > ${targetScript}`
   await $`chmod +x ${targetScript}`
   printSuccess("Main script installed")
 }
@@ -205,8 +226,8 @@ async function main() {
 
   switch (command) {
     case 'install':
-      printHeader("Baag Installation")
-      console.log(chalk.dim('Enhanced git worktree workflows with tmux integration'))
+      printHeader("Baag — AI Terminal Agent Automation")
+      console.log(chalk.dim('Enhanced git worktree workflows with tmux and AI integration'))
 
       await checkDependencies()
       await setupInstallDirectory()
