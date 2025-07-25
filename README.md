@@ -1,7 +1,6 @@
 # 🌳 Baag
 
-<img width="3258" height="2442" alt="screenshot_3x_postspark_2025-07-25_23-02-24" src="https://github.com/user-attachments/assets/1d18c5ec-56eb-45b8-9561-0b09166745a3" />
-
+<img width="2613" height="2206" alt="screenshot_3x_postspark_2025-07-25_23-02-24" src="https://github.com/user-attachments/assets/eda82a65-bfad-4617-ad4b-00f5af31d68a" />
 
 Baag is a simple terminal app that allows you to run Claude Code, Gemini or Codex in separate isoloated workspaces of the same project.
 
