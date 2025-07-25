@@ -296,6 +296,7 @@ async function main() {
       await startWorktree(args)
       break
     case 'stop':
+    case 'remove':
       await stopWorktree(args)
       break
     case 'submit':
