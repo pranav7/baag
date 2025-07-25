@@ -5,6 +5,18 @@
 
 Baag is a simple terminal app that allows you to run Claude Code, Gemini or Codex in separate isoloated workspaces of the same project.
 
+## Installation
+
+### ⚡️ Quick Install (Recommended)
+
+```bash
+# Bootstrap install (gets baag command available)
+curl -fsSL https://raw.githubusercontent.com/pranav7/baag/main/install.sh | bash
+
+# Full setup (dependency checks and configuration)
+baag setup
+```
+
 ## 🚀 Usage
 
 ```bash
@@ -90,18 +102,6 @@ my-project/
 │   └── bug-fix-login/     # Worktree for bug fix
 ├── src/
 └── ...
-```
-
-## Installation
-
-### ⚡️ Quick Install (Recommended)
-
-```bash
-# Bootstrap install (gets baag command available)
-curl -fsSL https://raw.githubusercontent.com/pranav7/baag/main/install.sh | bash
-
-# Full setup (dependency checks and configuration)
-baag setup
 ```
 
 ### 🐢 Manual Install
