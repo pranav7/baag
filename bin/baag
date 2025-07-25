@@ -23,7 +23,7 @@ if (__dirname.includes('.local/lib/baag')) {
 const { printError, colors } = await import(path.join(libDir, 'colors.mjs'))
 const { showBanner, showVersion } = await import(path.join(libDir, 'banner.mjs'))
 const { checkGitRepository, checkGitStatus } = await import(path.join(libDir, 'git-utils.mjs'))
-const { startWorktree, stopWorktree, listWorktrees, submitWorktree, cleanupWorktrees } = await import(path.join(libDir, 'worktree-utils.mjs'))
+const { startWorktree, stopWorktree, resumeWorktree, listWorktrees, submitWorktree, cleanupWorktrees } = await import(path.join(libDir, 'worktree-utils.mjs'))
 const { setupBaag, checkDependencies } = await import(path.join(libDir, 'install-utils.mjs'))
 const { runConfigWizard, showConfig } = await import(path.join(libDir, 'config-utils.mjs'))
 
@@ -132,6 +132,14 @@ function showUsage() {
   )
   printSubOption('Auto-detects worktree if run from within one')
   printSubOption('Cleans up tmux sessions automatically')
+
+  printCommand(
+    `${colors.boldCyan('resume')} ${colors.cyan('<name>')}`,
+    'Resume or create a worktree with tmux session'
+  )
+  printSubOption('Attaches to existing tmux session if available')
+  printSubOption('Creates new session if worktree exists but session is dead')
+  printSubOption('Creates new worktree + session if neither exists')
 
   printCommand(
     `${colors.boldBlue('submit')}|${colors.boldBlue('finish')} ${colors.dim('[options]')}`,
@@ -299,6 +307,9 @@ async function main() {
     case 'stop':
     case 'remove':
       await stopWorktree(args)
+      break
+    case 'resume':
+      await resumeWorktree(args)
       break
     case 'submit':
     case 'finish':
