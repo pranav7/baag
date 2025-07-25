@@ -127,7 +127,7 @@ function showUsage() {
   printSubOption('--horizontal-split, --hs: Use horizontal tmux split')
 
   printCommand(
-    `${colors.boldRed('stop')} ${colors.cyan('[name]')}`,
+    `${colors.boldRed('stop')}|${colors.boldRed('remove')} ${colors.cyan('[name]')}`,
     'Remove an existing worktree'
   )
   printSubOption('Auto-detects worktree if run from within one')
