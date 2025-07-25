@@ -133,11 +133,7 @@ baag check    # or: baag doctor
 
 ## Dependencies
 
-**Required:**
-- git
+- git + gh
 - node
-
-**Optional (enhances features):**
 - tmux (enables multi-pane development environment)
-- gh (enables PR creation)
-- claude (enables AI integration)
+- claude / codex / gemini
