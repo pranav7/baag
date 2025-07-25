@@ -18,6 +18,12 @@ baag submit
 
 # Remove a worktree
 baag stop feature-auth
+
+# Configure your preferences
+baag config
+
+# Show current configuration
+baag config --show
 ```
 
 ### Advanced Options
@@ -32,6 +38,27 @@ baag submit --base-branch develop
 # Push without creating PR
 baag submit --no-pr
 ```
+
+## ⚙️ Configuration
+
+Baag allows you to configure your preferences for a personalized experience:
+
+```bash
+# Run interactive configuration
+baag config
+```
+
+This will prompt you to configure:
+- **Base Branch**: Default branch for new worktrees (e.g., `main`, `develop`)
+- **AI Agent**: Your preferred AI assistant (`claude`, `copilot`, `openai`)
+- **Code Editor**: Default editor to open (`cursor`, `code`)
+
+```bash
+# View current settings
+baag config --show
+```
+
+Your preferences are stored in `.baag/config.json` and will be used automatically when creating new worktrees.
 
 ## 📁 Directory Structure
 
