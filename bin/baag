@@ -25,6 +25,7 @@ const { showBanner, showVersion } = await import(path.join(libDir, 'banner.mjs')
 const { checkGitRepository, checkGitStatus } = await import(path.join(libDir, 'git-utils.mjs'))
 const { startWorktree, stopWorktree, listWorktrees, submitWorktree, cleanupWorktrees } = await import(path.join(libDir, 'worktree-utils.mjs'))
 const { setupBaag, checkDependencies } = await import(path.join(libDir, 'install-utils.mjs'))
+const { runConfigWizard, showConfig } = await import(path.join(libDir, 'config-utils.mjs'))
 
 // Update functionality
 async function updateBaag() {
@@ -124,6 +125,8 @@ function showUsage() {
   console.log(`                              ${colors.dim('Full installation with dependency checks and configuration')}`)
   console.log(`  ${colors.boldGreen('check')}|${colors.boldGreen('doctor')}                 Check system dependencies and health`)
   console.log(`                              ${colors.dim('Verify all required and optional dependencies are available')}`)
+  console.log(`  ${colors.boldBlue('config')} ${colors.dim('[--show]')}              Configure baag preferences (base branch, AI agent, editor)`)
+  console.log(`                              ${colors.dim('--show: display current configuration')}`)
   console.log(`  ${colors.boldCyan('update')}                    Update baag to the latest version`)
   console.log(`  ${colors.boldWhite('help')}|${colors.boldWhite('--help')}|${colors.boldWhite('-h')}            Show this help message`)
   console.log(`  ${colors.boldMagenta('version')}|${colors.boldMagenta('--version')}|${colors.boldMagenta('-v')}        Show version information`)
@@ -134,6 +137,8 @@ function showUsage() {
   console.log(`  ${colors.dim('baag start hotfix --base main # Create from main branch instead of current')}`)
   console.log(`  ${colors.dim('baag stop                     # Remove current worktree (auto-detected)')}`)
   console.log(`  ${colors.dim('baag finish                   # Create PR and optionally cleanup')}`)
+  console.log(`  ${colors.dim('baag config                   # Run interactive configuration')}`)
+  console.log(`  ${colors.dim('baag config --show            # Show current configuration')}`)
   console.log(`  ${colors.dim('baag help                     # Show beautiful banner and help')}`)
   console.log(`  ${colors.dim('baag update                   # Update to latest version')}`)
   console.log(`  ${colors.dim('baag ls                       # List all worktrees')}`)
@@ -184,6 +189,35 @@ async function main() {
     case 'check':
     case 'doctor':
       await checkDependencies()
+      process.exit(0)
+      break
+    case 'config':
+      // Handle config command - can be used outside git repository
+      if (args.includes('--show')) {
+        // Show current configuration
+        try {
+          await showConfig()
+        } catch (error) {
+          if (error.message.includes('Not in a git repository')) {
+            printError('Config command must be run from within a git repository')
+          } else {
+            printError(`Failed to show configuration: ${error.message}`)
+          }
+          process.exit(1)
+        }
+      } else {
+        // Run interactive configuration wizard
+        try {
+          await runConfigWizard()
+        } catch (error) {
+          if (error.message.includes('Not in a git repository')) {
+            printError('Config command must be run from within a git repository')
+          } else {
+            printError(`Configuration failed: ${error.message}`)
+          }
+          process.exit(1)
+        }
+      }
       process.exit(0)
       break
   }
