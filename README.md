@@ -16,6 +16,9 @@ baag list
 # Submit your work (push + create PR)
 baag submit
 
+# Submit with custom PR title
+baag submit --title "Add user authentication system"
+
 # Remove a worktree
 baag stop feature-auth
 
@@ -26,17 +29,31 @@ baag config
 baag config --show
 ```
 
-### Advanced Options
+### Submit/Finish Options
+
+The `submit` command (also available as `finish`) pushes your changes and creates a pull request:
 
 ```bash
-# Create PR with custom title
-baag submit --title "Add user authentication"
+# Basic submit - creates PR with commit messages as title
+baag submit
 
-# Specify target branch
+# Create PR with custom title
+baag submit --title "Add user authentication system"
+
+# Submit to specific target branch
 baag submit --base-branch develop
 
-# Push without creating PR
+# Submit with custom title and target branch
+baag submit --title "Hotfix: Fix login bug" --base-branch main
+
+# Push changes without creating PR
 baag submit --no-pr
+
+# Skip git hooks when pushing
+baag submit --no-verify
+
+# Combined example
+baag submit --title "Feature: OAuth integration" --base-branch develop --no-verify
 ```
 
 ## ⚙️ Configuration
