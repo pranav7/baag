@@ -104,32 +104,88 @@ function showUsage() {
   console.log()
 
   console.log(`${colors.bold('Commands:')}`)
-  console.log(`  ${colors.boldGreen('start')} ${colors.cyan('<name>')} ${colors.dim('[options]')}        Create a new worktree and branch`)
-  console.log(`                              ${colors.dim('Remembers current branch as base for PR')}`)
-  console.log(`                              ${colors.dim('Auto-creates tmux session with Claude if available')}`)
-  console.log(`                              ${colors.dim('--base, --base-branch <branch>: Create from specific base branch')}`)
-  console.log(`                              ${colors.dim('--horizontal-split, --hs: Use horizontal tmux split')}`)
-  console.log(`  ${colors.boldRed('stop')} ${colors.cyan('[name]')}              Remove an existing worktree`)
-  console.log(`                              ${colors.dim('Auto-detects worktree if run from within one')}`)
-  console.log(`                              ${colors.dim('Cleans up tmux sessions automatically')}`)
-  console.log(`  ${colors.boldBlue('submit')}|${colors.boldBlue('finish')} ${colors.dim('[options]')}        Create PR and optionally clean up current worktree`)
-  console.log(`                              ${colors.dim('(submit and finish are the same command)')}`)
-  console.log(`                              ${colors.dim('--title <title>: PR title (default: use commit messages)')}`)
-  console.log(`                              ${colors.dim('--base-branch <branch>: target branch (default: remembered base)')}`)
-  console.log(`                              ${colors.dim('--no-verify: bypass git hooks when pushing')}`)
-  console.log(`                              ${colors.dim('--no-pr: only push, don\'t create pull request')}`)
-  console.log(`  ${colors.boldYellow('list')}|${colors.boldYellow('ls')}                     Show all existing worktrees and tmux sessions`)
-  console.log(`  ${colors.boldMagenta('cleanup')}                   Clean up orphaned worktree directories and configs`)
-  console.log(`                              ${colors.dim('Removes leftover directories, git configs, and dead tmux sessions')}`)
-  console.log(`  ${colors.boldBlue('setup')}                     Install or update baag and dependencies`)
-  console.log(`                              ${colors.dim('Full installation with dependency checks and configuration')}`)
-  console.log(`  ${colors.boldGreen('check')}|${colors.boldGreen('doctor')}                 Check system dependencies and health`)
-  console.log(`                              ${colors.dim('Verify all required and optional dependencies are available')}`)
-  console.log(`  ${colors.boldBlue('config')} ${colors.dim('[--show]')}              Configure baag preferences (base branch, AI agent, editor)`)
-  console.log(`                              ${colors.dim('--show: display current configuration')}`)
-  console.log(`  ${colors.boldCyan('update')}                    Update baag to the latest version`)
-  console.log(`  ${colors.boldWhite('help')}|${colors.boldWhite('--help')}|${colors.boldWhite('-h')}            Show this help message`)
-  console.log(`  ${colors.boldMagenta('version')}|${colors.boldMagenta('--version')}|${colors.boldMagenta('-v')}        Show version information`)
+
+  // Helper function to create properly aligned command help
+  const printCommand = (command, description) => {
+    // Remove ANSI color codes to calculate actual visual length
+    const visualLength = command.replace(/\x1b\[[0-9;]*m/g, '').length
+    const padding = ' '.repeat(Math.max(1, 30 - visualLength))
+    console.log(`  ${command}${padding}${description}`)
+  }
+
+  const printSubOption = (option) => {
+    console.log(`                                  ${colors.dim(option)}`)
+  }
+
+  printCommand(
+    `${colors.boldGreen('start')} ${colors.cyan('<name>')} ${colors.dim('[options]')}`,
+    'Create a new worktree and branch'
+  )
+  printSubOption('Remembers current branch as base for PR')
+  printSubOption('Auto-creates tmux session with Claude if available')
+  printSubOption('--base, --base-branch <branch>: Create from specific base branch')
+  printSubOption('--horizontal-split, --hs: Use horizontal tmux split')
+
+  printCommand(
+    `${colors.boldRed('stop')} ${colors.cyan('[name]')}`,
+    'Remove an existing worktree'
+  )
+  printSubOption('Auto-detects worktree if run from within one')
+  printSubOption('Cleans up tmux sessions automatically')
+
+  printCommand(
+    `${colors.boldBlue('submit')}|${colors.boldBlue('finish')} ${colors.dim('[options]')}`,
+    'Create PR and optionally clean up current worktree'
+  )
+  printSubOption('(submit and finish are the same command)')
+  printSubOption('--title <title>: PR title (default: use commit messages)')
+  printSubOption('--base-branch <branch>: target branch (default: remembered base)')
+  printSubOption('--no-verify: bypass git hooks when pushing')
+  printSubOption('--no-pr: only push, don\'t create pull request')
+
+  printCommand(
+    `${colors.boldYellow('list')}|${colors.boldYellow('ls')}`,
+    'Show all existing worktrees and tmux sessions'
+  )
+
+  printCommand(
+    `${colors.boldMagenta('cleanup')}`,
+    'Clean up orphaned worktree directories and configs'
+  )
+  printSubOption('Removes leftover directories, git configs, and dead tmux sessions')
+
+  printCommand(
+    `${colors.boldBlue('setup')}`,
+    'Install or update baag and dependencies'
+  )
+  printSubOption('Full installation with dependency checks and configuration')
+
+  printCommand(
+    `${colors.boldGreen('check')}|${colors.boldGreen('doctor')}`,
+    'Check system dependencies and health'
+  )
+  printSubOption('Verify all required and optional dependencies are available')
+
+  printCommand(
+    `${colors.boldBlue('config')} ${colors.dim('[--show]')}`,
+    'Configure baag preferences (base branch, AI agent, editor)'
+  )
+  printSubOption('--show: display current configuration')
+
+  printCommand(
+    `${colors.boldCyan('update')}`,
+    'Update baag to the latest version'
+  )
+
+  printCommand(
+    `${colors.boldWhite('help')}|${colors.boldWhite('--help')}|${colors.boldWhite('-h')}`,
+    'Show this help message'
+  )
+
+  printCommand(
+    `${colors.boldMagenta('version')}|${colors.boldMagenta('--version')}|${colors.boldMagenta('-v')}`,
+    'Show version information'
+  )
   console.log()
   console.log(`${colors.bold('Examples:')}`)
   console.log(`  ${colors.dim('baag start feature-branch     # Create and switch to new worktree')}`)
