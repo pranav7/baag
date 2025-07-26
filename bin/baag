@@ -23,7 +23,7 @@ if (__dirname.includes('.local/lib/baag')) {
 const { printError, colors } = await import(path.join(libDir, 'colors.mjs'))
 const { showBanner, showVersion } = await import(path.join(libDir, 'banner.mjs'))
 const { checkGitRepository, checkGitStatus } = await import(path.join(libDir, 'git-utils.mjs'))
-const { startWorktree, stopWorktree, resumeWorktree, listWorktrees, submitWorktree, cleanupWorktrees } = await import(path.join(libDir, 'worktree-utils.mjs'))
+const { startWorktree, stopWorktree, resumeWorktree, listWorktrees, advancedListWorktrees, submitWorktree, cleanupWorktrees } = await import(path.join(libDir, 'worktree-utils.mjs'))
 const { setupBaag, checkDependencies } = await import(path.join(libDir, 'install-utils.mjs'))
 const { runConfigWizard, showConfig } = await import(path.join(libDir, 'config-utils.mjs'))
 
@@ -157,6 +157,12 @@ function showUsage() {
   )
 
   printCommand(
+    `${colors.boldMagenta('preview')}|${colors.boldMagenta('ps')}`,
+    'Live AI agent activity dashboard'
+  )
+  printSubOption('See what Claude and other AI agents are working on across all sessions')
+
+  printCommand(
     `${colors.boldMagenta('cleanup')}`,
     'Clean up orphaned worktree directories and configs'
   )
@@ -207,6 +213,7 @@ function showUsage() {
   console.log(`  ${colors.dim('baag help                     # Show beautiful banner and help')}`)
   console.log(`  ${colors.dim('baag update                   # Update to latest version')}`)
   console.log(`  ${colors.dim('baag ls                       # List all worktrees')}`)
+  console.log(`  ${colors.dim('baag preview                  # Live AI agent activity dashboard')}`)
   console.log(`  ${colors.dim('baag cleanup                  # Clean up orphaned directories and configs')}`)
   console.log(`  ${colors.dim('baag setup                    # Install/update baag system')}`)
   console.log(`  ${colors.dim('baag check                    # Check system health and dependencies')}`)
@@ -319,6 +326,10 @@ async function main() {
     case 'list':
     case 'ls':
       await listWorktrees()
+      break
+    case 'preview':
+    case 'ps':
+      await advancedListWorktrees()
       break
     case 'cleanup':
       await cleanupWorktrees()
