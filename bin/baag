@@ -200,6 +200,7 @@ function showUsage() {
   console.log(`  ${colors.dim('baag start new-ui --hs        # Create with horizontal tmux split')}`)
   console.log(`  ${colors.dim('baag start hotfix --base main # Create from main branch instead of current')}`)
   console.log(`  ${colors.dim('baag stop                     # Remove current worktree (auto-detected)')}`)
+  console.log(`  ${colors.dim('baag resume feature-branch    # Resume or create worktree with tmux session')}`)
   console.log(`  ${colors.dim('baag finish                   # Create PR and optionally cleanup')}`)
   console.log(`  ${colors.dim('baag config                   # Run interactive configuration')}`)
   console.log(`  ${colors.dim('baag config --show            # Show current configuration')}`)
