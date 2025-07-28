@@ -5,9 +5,24 @@ All notable changes to Baag will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.0.2] - 2025-07-28
 
-## [1.0.0] - 2024-01-XX
+### Added
+- Interactive shell for creating new development sessions
+- Session resuming capability - continue work on existing worktrees
+- Branch prefix configuration for automatic branch naming conventions
+- Enhanced configuration wizard with branch prefix setup
+
+### Enhanced  
+- Improved worktree creation workflow with interactive prompts
+- Better session management and state tracking
+- More robust tmux integration with session persistence
+
+### Fixed
+- Help text formatting and alignment improvements
+- Branch prefix application to worktree creation process
+
+## [0.0.1] - 2024-01-15
 
 ### Added
 - Initial release of Baag
@@ -42,25 +57,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Manual installation from source
 - Homebrew formula (coming soon)
 
----
-
-## Release Notes
-
-### v1.0.0 - Initial Release
-
-This is the first stable release of Baag, bringing together all the core functionality needed for an enhanced git worktree workflow.
-
-#### Key Highlights
-- 🚀 **Rapid Development**: Create isolated development environments in seconds
-- 🧠 **Smart Automation**: Remembers your workflow preferences and automates repetitive tasks
-- 🔗 **Seamless Integration**: Works beautifully with existing git, tmux, and GitHub workflows
-- 🎨 **Developer Experience**: Beautiful, informative output that keeps you in the flow
-
-#### Perfect For
-- Developers working on multiple features simultaneously
-- Teams using feature branch workflows
-- Anyone who wants to speed up their git workflow
-- Developers who love automation and efficient tooling
-
-[Unreleased]: https://github.com/your-username/baag/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/your-username/baag/releases/tag/v1.0.0
+[0.0.2]: https://github.com/your-username/baag/compare/v0.0.1...v0.0.2
+[0.0.1]: https://github.com/your-username/baag/releases/tag/v0.0.1
