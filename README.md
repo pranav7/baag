@@ -117,6 +117,32 @@ cd baag
 baag setup
 ```
 
+### 🔧 Local Development
+
+For local development where changes are immediately reflected:
+
+```bash
+# Clone and enter the repository
+git clone https://github.com/pranav7/baag.git
+cd baag
+
+# Install for development (creates symlinks)
+make dev-install
+
+# Now any changes to the code are immediately available
+# Edit files and test directly with:
+baag version
+
+# To uninstall the development version
+make dev-uninstall
+```
+
+The development installation:
+- Creates symlinks from `~/.local/bin/baag` to your local repository
+- Automatically uses the local `node_modules` for dependencies
+- Changes to any file are immediately reflected without reinstallation
+- Perfect for testing and development
+
 ### 🔄 Updating
 
 ```bash

@@ -15,7 +15,7 @@ help: ## Show this help message
 
 install: ## Install baag to ~/.local/bin
 	@echo "Installing Baag..."
-	@./scripts/install.sh
+	@./install.sh
 
 uninstall: ## Remove baag from ~/.local/bin
 	@echo "Uninstalling Baag..."
@@ -37,13 +37,13 @@ test: ## Run basic functionality tests
 
 check: ## Check dependencies and installation
 	@echo "Checking dependencies..."
-	@./scripts/install.sh check
+	@./install.sh check
 
 lint: ## Check script for common issues
 	@echo "Linting scripts..."
 	@if command -v shellcheck >/dev/null 2>&1; then \
 		shellcheck bin/$(SCRIPT_NAME); \
-		shellcheck scripts/install.sh; \
+		shellcheck install.sh; \
 		echo "✓ Shellcheck passed"; \
 	else \
 		echo "⚠ shellcheck not found, skipping lint check"; \
@@ -60,7 +60,7 @@ format: ## Format shell scripts
 	@echo "Formatting scripts..."
 	@if command -v shfmt >/dev/null 2>&1; then \
 		shfmt -i 2 -w bin/$(SCRIPT_NAME); \
-		shfmt -i 2 -w scripts/install.sh; \
+		shfmt -i 2 -w install.sh; \
 		echo "✓ Formatting complete"; \
 	else \
 		echo "⚠ shfmt not found, skipping format"; \
@@ -80,15 +80,16 @@ package: ## Create a release package
 dev-setup: ## Set up development environment
 	@echo "Setting up development environment..."
 	@chmod +x bin/$(SCRIPT_NAME)
-	@chmod +x scripts/install.sh
+	@chmod +x install.sh
+	@npm install
 	@echo "✓ Development environment ready"
 
 # Development helpers
 dev-install: dev-setup ## Install for development (symlink)
 	@echo "Installing for development..."
 	@mkdir -p "$(INSTALL_DIR)"
-	@ln -sf "$(PWD)/bin/$(SCRIPT_NAME)" "$(INSTALL_DIR)/$(SCRIPT_NAME)"
-	@ln -sf "$(PWD)/bin/$(SCRIPT_NAME)" "$(INSTALL_DIR)/$(ALIAS_NAME)"
+	@ln -sf "$(PWD)/bin/baag-wrapper" "$(INSTALL_DIR)/$(SCRIPT_NAME)"
+	@ln -sf "$(PWD)/bin/baag-wrapper" "$(INSTALL_DIR)/$(ALIAS_NAME)"
 	@echo "✓ Development installation complete (symlinked)"
 
 dev-uninstall: ## Remove development installation
