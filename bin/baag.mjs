@@ -1,0 +1,359 @@
+#!/usr/bin/env node
+
+import { $ } from 'zx'
+import path from 'path'
+import os from 'os'
+import { fileURLToPath } from 'url'
+
+// Preserve the current working directory - CRITICAL for baag to work properly
+const CWD = process.cwd()
+
+// Configure zx to use the current working directory for all commands
+$.cwd = CWD
+
+// Disable verbose output by default
+$.verbose = false
+
+// Get script directory for module imports
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+// Determine lib directory - for installed version vs development version
+let libDir = path.join(__dirname, '../lib')
+if (__dirname.includes('.local/lib/baag')) {
+  // Running from installed location - libraries are in the same directory
+  libDir = __dirname
+} else if (__dirname.includes('.local/bin')) {
+  // Running from installed location via wrapper - libraries are in .local/lib/baag
+  libDir = path.join(os.homedir(), '.local', 'lib', 'baag')
+}
+
+// Import modules
+const { printError, colors } = await import(path.join(libDir, 'colors.mjs'))
+const { showBanner, showVersion } = await import(path.join(libDir, 'banner.mjs'))
+const { checkGitRepository, checkGitStatus } = await import(path.join(libDir, 'git-utils.mjs'))
+const { startWorktree, stopWorktree, resumeWorktree, listWorktrees, advancedListWorktrees, submitWorktree, cleanupWorktrees } = await import(path.join(libDir, 'worktree-utils.mjs'))
+const { setupBaag, checkDependencies } = await import(path.join(libDir, 'install-utils.mjs'))
+const { runConfigWizard, showConfig } = await import(path.join(libDir, 'config-utils.mjs'))
+
+// Update functionality
+async function updateBaag() {
+  const { printHeader, printInfo, printSuccess, printError, formatCommand } = await import(path.join(libDir, 'colors.mjs'))
+
+  printHeader('Updating Baag')
+
+  // Check if we're in a baag repository
+  const fs = await import('fs')
+  const hasMainScript = fs.existsSync(path.join(CWD, 'bin/baag'))
+  const hasInstallScript = fs.existsSync(path.join(CWD, 'scripts/install'))
+
+  if (!hasMainScript || !hasInstallScript) {
+    console.log(`${colors.yellow('Update from a baag repository:')}`)
+    console.log()
+    console.log('1. Clone or navigate to a baag repository:')
+    console.log(`   ${formatCommand('git clone <repository-url>')}`)
+    console.log(`   ${formatCommand('cd baag')}`)
+    console.log()
+    console.log('2. Run the update command:')
+    console.log(`   ${formatCommand('baag update')}`)
+    console.log()
+    console.log('3. Or run the install script directly:')
+    console.log(`   ${formatCommand('node scripts/install')}`)
+    console.log()
+    process.exit(1)
+  }
+
+  printInfo('Running install script to update baag...')
+
+  try {
+    // Check if install script exists and is executable
+    if (fs.existsSync(path.join(CWD, 'scripts/install'))) {
+      // Try different ways to run the install script
+      try {
+        await $`command -v node`
+        printInfo('Using Node.js to run install script')
+        await $`cd ${CWD} && node scripts/install`
+      } catch {
+        try {
+          await $`command -v zx`
+          printInfo('Using zx to run install script')
+          await $`cd ${CWD} && zx scripts/install`
+        } catch {
+          printError('Neither Node.js nor zx found. Please install Node.js to update baag.')
+          process.exit(1)
+        }
+      }
+    } else {
+      printError('Install script not found. Make sure you\'re in a baag repository.')
+      process.exit(1)
+    }
+
+    printSuccess('Update complete!')
+    console.log()
+    console.log(`${colors.bold}Updated features:`)
+    console.log('• Enhanced branding and help text')
+    console.log('• submit/finish command aliases')
+    console.log('• Horizontal tmux splits (--hs option)')
+    console.log('• Auto-detection for stop command')
+    console.log('• Origin tracking and return functionality')
+    console.log('• Modern ZX/Node.js implementation')
+    console.log()
+    console.log(`Run ${formatCommand('baag --help')} to see all available options.`)
+  } catch (error) {
+    printError('Update failed')
+    console.error(error.message)
+    process.exit(1)
+  }
+}
+
+// Usage/help function
+function showUsage() {
+  showBanner()
+  console.log(`${colors.bold('Usage:')} baag ${colors.cyan('<command>')} ${colors.dim('[options] [name]')}`)
+  console.log()
+
+  console.log(`${colors.bold('Commands:')}`)
+
+  // Helper function to create properly aligned command help
+  const printCommand = (command, description) => {
+    // Remove ANSI color codes to calculate actual visual length
+    const visualLength = command.replace(/\x1b\[[0-9;]*m/g, '').length
+    const padding = ' '.repeat(Math.max(1, 30 - visualLength))
+    console.log(`  ${command}${padding}${description}`)
+  }
+
+  const printSubOption = (option) => {
+    console.log(`                                  ${colors.dim(option)}`)
+  }
+
+  printCommand(
+    `${colors.boldGreen('start')} ${colors.cyan('<name>')} ${colors.dim('[options]')}`,
+    'Create a new worktree and branch'
+  )
+  printSubOption('Remembers current branch as base for PR')
+  printSubOption('Auto-creates tmux session with Claude if available')
+  printSubOption('--base, --base-branch <branch>: Create from specific base branch')
+  printSubOption('--horizontal-split, --hs: Use horizontal tmux split')
+
+  printCommand(
+    `${colors.boldRed('stop')}|${colors.boldRed('remove')} ${colors.cyan('[name]')}`,
+    'Remove an existing worktree'
+  )
+  printSubOption('Auto-detects worktree if run from within one')
+  printSubOption('Cleans up tmux sessions automatically')
+
+  printCommand(
+    `${colors.boldCyan('resume')} ${colors.cyan('<name>')}`,
+    'Resume or create a worktree with tmux session'
+  )
+  printSubOption('Attaches to existing tmux session if available')
+  printSubOption('Creates new session if worktree exists but session is dead')
+  printSubOption('Creates new worktree + session if neither exists')
+
+  printCommand(
+    `${colors.boldBlue('submit')}|${colors.boldBlue('finish')} ${colors.dim('[options]')}`,
+    'Create PR and optionally clean up current worktree'
+  )
+  printSubOption('(submit and finish are the same command)')
+  printSubOption('--title <title>: PR title (default: use commit messages)')
+  printSubOption('--base-branch <branch>: target branch (default: remembered base)')
+  printSubOption('--no-verify: bypass git hooks when pushing')
+  printSubOption('--no-pr: only push, don\'t create pull request')
+
+  printCommand(
+    `${colors.boldYellow('list')}|${colors.boldYellow('ls')}`,
+    'Show all existing worktrees and tmux sessions'
+  )
+
+  printCommand(
+    `${colors.boldMagenta('preview')}|${colors.boldMagenta('ps')}`,
+    'Live AI agent activity dashboard'
+  )
+  printSubOption('See what Claude and other AI agents are working on across all sessions')
+
+  printCommand(
+    `${colors.boldMagenta('cleanup')}`,
+    'Clean up orphaned worktree directories and configs'
+  )
+  printSubOption('Removes leftover directories, git configs, and dead tmux sessions')
+
+  printCommand(
+    `${colors.boldBlue('setup')}`,
+    'Install or update baag and dependencies'
+  )
+  printSubOption('Full installation with dependency checks and configuration')
+
+  printCommand(
+    `${colors.boldGreen('check')}|${colors.boldGreen('doctor')}`,
+    'Check system dependencies and health'
+  )
+  printSubOption('Verify all required and optional dependencies are available')
+
+  printCommand(
+    `${colors.boldBlue('config')} ${colors.dim('[--show]')}`,
+    'Configure baag preferences (base branch, AI agent, editor)'
+  )
+  printSubOption('--show: display current configuration')
+
+  printCommand(
+    `${colors.boldCyan('update')}`,
+    'Update baag to the latest version'
+  )
+
+  printCommand(
+    `${colors.boldWhite('help')}|${colors.boldWhite('--help')}|${colors.boldWhite('-h')}`,
+    'Show this help message'
+  )
+
+  printCommand(
+    `${colors.boldMagenta('version')}|${colors.boldMagenta('--version')}|${colors.boldMagenta('-v')}`,
+    'Show version information'
+  )
+  console.log()
+  console.log(`${colors.bold('Examples:')}`)
+  console.log(`  ${colors.dim('baag start feature-branch     # Create and switch to new worktree')}`)
+  console.log(`  ${colors.dim('baag start new-ui --hs        # Create with horizontal tmux split')}`)
+  console.log(`  ${colors.dim('baag start hotfix --base main # Create from main branch instead of current')}`)
+  console.log(`  ${colors.dim('baag stop                     # Remove current worktree (auto-detected)')}`)
+  console.log(`  ${colors.dim('baag resume feature-branch    # Resume or create worktree with tmux session')}`)
+  console.log(`  ${colors.dim('baag finish                   # Create PR and optionally cleanup')}`)
+  console.log(`  ${colors.dim('baag config                   # Run interactive configuration')}`)
+  console.log(`  ${colors.dim('baag config --show            # Show current configuration')}`)
+  console.log(`  ${colors.dim('baag help                     # Show beautiful banner and help')}`)
+  console.log(`  ${colors.dim('baag update                   # Update to latest version')}`)
+  console.log(`  ${colors.dim('baag ls                       # List all worktrees')}`)
+  console.log(`  ${colors.dim('baag preview                  # Live AI agent activity dashboard')}`)
+  console.log(`  ${colors.dim('baag cleanup                  # Clean up orphaned directories and configs')}`)
+  console.log(`  ${colors.dim('baag setup                    # Install/update baag system')}`)
+  console.log(`  ${colors.dim('baag check                    # Check system health and dependencies')}`)
+  process.exit(1)
+}
+
+// Main execution
+async function main() {
+  // Debug: log argv to understand the structure
+  // console.log('process.argv:', process.argv)
+
+  // For zx scripts, we need to handle arguments differently
+  const scriptArgs = process.argv.slice(2)
+  let command, args
+
+  // If running with 'zx bin/baag command', the script path is included
+  if (scriptArgs[0] && scriptArgs[0].includes('baag')) {
+    command = scriptArgs[1]
+    args = scriptArgs.slice(2)
+  } else {
+    // If running directly as './bin/baag command'
+    command = scriptArgs[0]
+    args = scriptArgs.slice(1)
+  }
+
+  // Handle commands that don't require git repository or clean status
+  switch (command) {
+    case 'help':
+    case '--help':
+    case '-h':
+      showUsage()
+      break
+    case 'version':
+    case '--version':
+    case '-v':
+      showVersion()
+      break
+    case 'update':
+      await updateBaag()
+      break
+    case 'setup':
+      await setupBaag()
+      process.exit(0)
+      break
+    case 'check':
+    case 'doctor':
+      await checkDependencies()
+      process.exit(0)
+      break
+    case 'config':
+      // Handle config command - can be used outside git repository
+      if (args.includes('--show')) {
+        // Show current configuration
+        try {
+          await showConfig()
+        } catch (error) {
+          if (error.message.includes('Not in a git repository')) {
+            printError('Config command must be run from within a git repository')
+          } else {
+            printError(`Failed to show configuration: ${error.message}`)
+          }
+          process.exit(1)
+        }
+      } else {
+        // Run interactive configuration wizard
+        try {
+          await runConfigWizard()
+        } catch (error) {
+          if (error.message.includes('Not in a git repository')) {
+            printError('Config command must be run from within a git repository')
+          } else {
+            printError(`Configuration failed: ${error.message}`)
+          }
+          process.exit(1)
+        }
+      }
+      process.exit(0)
+      break
+  }
+
+  // Validate we're in a git repository before proceeding with other commands
+  if (!await checkGitRepository()) {
+    process.exit(1)
+  }
+
+  // Only check git status for commands that need clean working directory
+  if (['start'].includes(command)) {
+    // Temporarily disable git status check for testing
+    // if (!await checkGitStatus()) {
+    //   process.exit(1)
+    // }
+  }
+
+  // Handle commands that require git repository
+  switch (command) {
+    case 'start':
+      await startWorktree(args)
+      break
+    case 'stop':
+    case 'remove':
+      await stopWorktree(args)
+      break
+    case 'resume':
+      await resumeWorktree(args)
+      break
+    case 'submit':
+    case 'finish':
+      await submitWorktree(args)
+      break
+    case 'list':
+    case 'ls':
+      await listWorktrees()
+      break
+    case 'preview':
+    case 'ps':
+      await advancedListWorktrees()
+      break
+    case 'cleanup':
+      await cleanupWorktrees()
+      break
+    default:
+      if (!command) {
+        showUsage()
+      } else {
+        printError(`Unknown command: ${command}`)
+        console.log(`Run ${colors.blue('baag --help')} for usage information.`)
+        process.exit(1)
+      }
+      break
+  }
+}
+
+// Run the main function
+await main()

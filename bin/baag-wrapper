@@ -1,18 +1,12 @@
 #!/bin/bash
+# Baag wrapper - uses locally installed zx
+LIB_DIR="$HOME/.local/lib/baag"
+export NODE_PATH="$LIB_DIR/node_modules:$NODE_PATH"
 
-# Find the script's actual location (resolving symlinks)
-SCRIPT_PATH="$(readlink -f "$0")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-
-# Change to project directory and run with local zx
-cd "$PROJECT_ROOT" || exit 1
-
-# Check if node_modules exists
-if [ ! -d "node_modules" ]; then
-    echo "Error: node_modules not found. Running npm install..."
-    npm install
+# Use the locally installed zx to run baag
+if [ -f "$LIB_DIR/node_modules/.bin/zx" ]; then
+    exec "$LIB_DIR/node_modules/.bin/zx" "$LIB_DIR/baag.mjs" "$@"
+else
+    # Fallback to node if zx is not found
+    exec node "$LIB_DIR/baag.mjs" "$@"
 fi
-
-# Run the actual baag script with zx from node_modules
-exec npx zx "$PROJECT_ROOT/bin/baag" "$@"

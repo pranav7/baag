@@ -1,0 +1,19 @@
+#!/bin/bash
+# Baag development wrapper - uses local source
+# Get the actual script location, following symlinks
+SCRIPT="$0"
+while [ -L "$SCRIPT" ]; do
+    SCRIPT="$(readlink "$SCRIPT")"
+done
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Use project's node_modules
+export NODE_PATH="$PROJECT_DIR/node_modules:$NODE_PATH"
+
+# Run with local zx if available, otherwise use node
+if [ -f "$PROJECT_DIR/node_modules/.bin/zx" ]; then
+    exec "$PROJECT_DIR/node_modules/.bin/zx" "$PROJECT_DIR/bin/baag.mjs" "$@"
+else
+    exec node "$PROJECT_DIR/bin/baag.mjs" "$@"
+fi

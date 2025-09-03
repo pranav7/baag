@@ -1,165 +1,206 @@
-# 🌳 Baag
+# 🌳 Baag - AI Terminal Agent Automation
 
 <img width="2613" height="2206" alt="screenshot_3x_postspark_2025-07-25_23-02-24" src="https://github.com/user-attachments/assets/eda82a65-bfad-4617-ad4b-00f5af31d68a" />
 
-Baag is a simple terminal app that allows you to run Claude Code, Gemini or Codex in separate isoloated workspaces of the same project.
+Baag is a powerful CLI tool that manages git worktrees with tmux integration, enabling you to run AI agents (Claude, Aider, etc.) in isolated workspaces. Perfect for managing multiple features, experiments, or bug fixes simultaneously without branch switching.
 
 ## Installation
 
 ### ⚡️ Quick Install (Recommended)
 
 ```bash
-# Bootstrap install (gets baag command available)
+# One-line install with automatic setup
 curl -fsSL https://raw.githubusercontent.com/pranav7/baag/main/install.sh | bash
-
-# Full setup (dependency checks and configuration)
-baag setup
 ```
 
-## 🚀 Usage
+After installation, in any git repository:
 
 ```bash
-# Create a new worktree and branch
+# Initialize baag in your project (first time only)
+baag setup
+
+# Configure your preferences (optional)
+baag config
+```
+
+## 🚀 Quick Start
+
+```bash
+# Start a new feature in isolated workspace with tmux + AI
 baag start feature-auth
 
-# List all worktrees
+# List all active worktrees and sessions
 baag list
 
-# Submit your work (push + create PR)
-baag submit
+# Create PR and optionally clean up when done
+baag submit  # or: baag finish
 
-# Submit with custom PR title
-baag submit --title "Add user authentication system"
+# Remove a worktree (auto-detects current if inside one)
+baag stop
 
-# Remove a worktree
-baag stop feature-auth
-
-# Configure your preferences
-baag config
-
-# Show current configuration
-baag config --show
+# Resume work on existing worktree
+baag resume feature-auth
 ```
 
-### Submit/Finish Options
+## 📚 Commands
 
-The `submit` command (also available as `finish`) pushes your changes and creates a pull request:
+### Core Workflow
 
 ```bash
-# Basic submit - creates PR with commit messages as title
-baag submit
+# Start new worktree with auto-tmux session
+baag start feature-name
+baag start feature-name --base main        # Specify base branch
+baag start feature-name --hs               # Horizontal split layout
 
-# Create PR with custom title
-baag submit --title "Add user authentication system"
+# Stop/remove worktree (auto-detects current)
+baag stop                                   # Removes current worktree
+baag stop feature-name                      # Remove specific worktree
 
-# Submit to specific target branch
-baag submit --base-branch develop
+# Resume or create worktree with session
+baag resume feature-name                    # Attach or create session
 
-# Submit with custom title and target branch
-baag submit --title "Hotfix: Fix login bug" --base-branch main
+# Submit work (creates PR)
+baag submit                                 # Use commit messages as PR title
+baag submit --title "Custom PR title"      # Custom title
+baag submit --base-branch develop          # Target specific branch
+baag submit --no-pr                        # Push only, no PR
+baag submit --no-verify                    # Skip git hooks
 
-# Push changes without creating PR
-baag submit --no-pr
+# List and monitor
+baag list                                   # Show all worktrees
+baag preview                                # Live AI agent activity dashboard
+```
 
-# Skip git hooks when pushing
-baag submit --no-verify
+### Setup & Maintenance
 
-# Combined example
-baag submit --title "Feature: OAuth integration" --base-branch develop --no-verify
+```bash
+# Initial setup in new project
+baag setup                                  # Initialize .baag directory and config
+
+# Configuration
+baag config                                 # Interactive configuration wizard
+baag config --show                          # Display current settings
+
+# System health
+baag check                                  # Check dependencies
+baag cleanup                                # Remove orphaned worktrees
+
+# Help & info
+baag --help                                 # Show all commands
+baag --version                              # Show version
 ```
 
 ## ⚙️ Configuration
 
-Baag allows you to configure your preferences for a personalized experience:
+Run the interactive configuration wizard:
 
 ```bash
-# Run interactive configuration
 baag config
 ```
 
-This will prompt you to configure:
-- **Base Branch**: Default branch for new worktrees (e.g., `main`, `develop`)
-- **AI Agent**: Your preferred AI assistant (`claude`, `copilot`, `openai`)
-- **Code Editor**: Default editor to open (`cursor`, `code`)
+Configurable options:
+- **Base Branch**: Default branch for creating worktrees (main/master/develop)
+- **AI Agent**: Preferred AI assistant (claude/aider/none)
+- **Code Editor**: Auto-open editor (cursor/code/vim/none)  
+- **Branch Prefix**: Naming convention for branches
+
+Settings are stored in git config per repository. View with:
 
 ```bash
-# View current settings
 baag config --show
 ```
 
-Your preferences are stored in `.baag/config.json` and will be used automatically when creating new worktrees.
+## 📁 How It Works
 
-## 📁 Directory Structure
-
-Baag creates multiple workspaces in a `.baag` directory within your git repository (make sure to add it to your `.gitignore`)
+Baag creates isolated git worktrees in a `.baag/` directory (automatically added to `.gitignore`):
 
 ```
 my-project/
 ├── .git/
-├── .baag/
-│   ├── feature-auth/      # Worktree for auth feature
-│   └── bug-fix-login/     # Worktree for bug fix
-├── src/
+├── .baag/                  # Auto-created and gitignored
+│   ├── feature-auth/       # Complete isolated workspace
+│   ├── bug-fix-login/      # Another workspace
+│   └── experiment-ai/      # Parallel development
+├── src/                    # Your main working tree
 └── ...
 ```
 
-### 🐢 Manual Install
+Each worktree:
+- Has its own branch and working directory
+- Runs in a dedicated tmux session with AI agent
+- Shares the same git history
+- Can be worked on simultaneously
 
+### 🔧 Alternative Installation Methods
+
+**From Source:**
 ```bash
-# Clone the repository
 git clone https://github.com/pranav7/baag.git
 cd baag
-
-# Run bootstrap installer
 ./install.sh
-
-# Then run full setup
-baag setup
 ```
 
-### 🔧 Local Development
+**Via Homebrew (coming soon):**
+```bash
+brew install pranav7/tap/baag
+```
 
-For local development where changes are immediately reflected:
+### 🔧 Development Setup
+
+For contributors and local development:
 
 ```bash
-# Clone and enter the repository
 git clone https://github.com/pranav7/baag.git
 cd baag
+make dev-install    # Creates symlinks for live development
 
-# Install for development (creates symlinks)
-make dev-install
+# Make changes and test immediately
+baag --version
 
-# Now any changes to the code are immediately available
-# Edit files and test directly with:
-baag version
-
-# To uninstall the development version
+# Clean up
 make dev-uninstall
 ```
 
-The development installation:
-- Creates symlinks from `~/.local/bin/baag` to your local repository
-- Automatically uses the local `node_modules` for dependencies
-- Changes to any file are immediately reflected without reinstallation
-- Perfect for testing and development
+## 📋 Requirements
 
-### 🔄 Updating
+**Required:**
+- Git
+- Node.js (v18+)
+
+**Optional (but recommended):**
+- **tmux** - Multi-pane terminal sessions with AI agents
+- **gh** - GitHub CLI for PR creation
+- **claude** - Claude CLI for AI pair programming
+- **aider** - Alternative AI coding assistant
+
+## 🔄 Updating
 
 ```bash
-# Update to latest version
-baag setup
+# Update to latest version from any baag repository
+baag update
 ```
 
-### 🩺 Health Check
+## 🩺 Troubleshooting
 
 ```bash
-# Check system dependencies and health
-baag check    # or: baag doctor
+# Check all dependencies
+baag check
+
+# Clean up orphaned worktrees
+baag cleanup
+
+# Reinstall/repair
+curl -fsSL https://raw.githubusercontent.com/pranav7/baag/main/install.sh | bash
 ```
 
-## Dependencies
+## 📝 License
 
-- git + gh
-- node
-- tmux (enables multi-pane development environment)
-- claude / codex / gemini
+MIT
+
+## 🤝 Contributing
+
+Contributions welcome! Please feel free to submit a Pull Request.
+
+## 🐛 Issues
+
+Report issues at: https://github.com/pranav7/baag/issues

@@ -103,17 +103,25 @@ install_baag() {
     cp -r "$temp_dir/lib"/* "$LIB_DIR/"
     cp "$temp_dir/bin/baag" "$LIB_DIR/baag.mjs"
 
-    # Create minimal wrapper script
+    # Create wrapper script that uses local zx
     cat > "$INSTALL_DIR/baag" << 'EOF'
 #!/bin/bash
-# Baag bootstrap wrapper
-export NODE_PATH="$HOME/.local/lib/baag/node_modules:$NODE_PATH"
-exec node "$HOME/.local/lib/baag/baag.mjs" "$@"
+# Baag wrapper - uses locally installed zx
+LIB_DIR="$HOME/.local/lib/baag"
+export NODE_PATH="$LIB_DIR/node_modules:$NODE_PATH"
+
+# Use the locally installed zx to run baag
+if [ -f "$LIB_DIR/node_modules/.bin/zx" ]; then
+    exec "$LIB_DIR/node_modules/.bin/zx" "$LIB_DIR/baag.mjs" "$@"
+else
+    # Fallback to node if zx is not found
+    exec node "$LIB_DIR/baag.mjs" "$@"
+fi
 EOF
 
     chmod +x "$INSTALL_DIR/baag"
 
-    # Install minimal dependencies
+    # Install dependencies locally
     print_info "Installing Node.js dependencies..."
     cd "$LIB_DIR"
     cat > package.json << 'EOF'
@@ -125,12 +133,18 @@ EOF
     "zx": "^8.0.0",
     "chalk": "^5.3.0",
     "boxen": "^7.1.1",
-    "figures": "^6.1.0"
+    "figures": "^6.1.0",
+    "@clack/prompts": "^0.7.0"
   }
 }
 EOF
 
-    npm install --silent >/dev/null 2>&1
+    if npm install --silent >/dev/null 2>&1; then
+        print_success "Dependencies installed locally"
+    else
+        print_warning "Failed to install some dependencies"
+        echo -e "${DIM}You may need to install zx globally: npm install -g zx${NC}"
+    fi
     cd - >/dev/null
 
     # Cleanup

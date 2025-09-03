@@ -88,8 +88,8 @@ dev-setup: ## Set up development environment
 dev-install: dev-setup ## Install for development (symlink)
 	@echo "Installing for development..."
 	@mkdir -p "$(INSTALL_DIR)"
-	@ln -sf "$(PWD)/bin/baag-wrapper" "$(INSTALL_DIR)/$(SCRIPT_NAME)"
-	@ln -sf "$(PWD)/bin/baag-wrapper" "$(INSTALL_DIR)/$(ALIAS_NAME)"
+	@ln -sf "$(PWD)/bin/baag-dev" "$(INSTALL_DIR)/$(SCRIPT_NAME)"
+	@ln -sf "$(PWD)/bin/baag-dev" "$(INSTALL_DIR)/$(ALIAS_NAME)"
 	@echo "✓ Development installation complete (symlinked)"
 
 dev-uninstall: ## Remove development installation
