@@ -23,7 +23,7 @@ if (__dirname.includes('.local/lib/baag')) {
 const { printError, colors } = await import(path.join(libDir, 'colors.mjs'))
 const { showBanner, showVersion } = await import(path.join(libDir, 'banner.mjs'))
 const { checkGitRepository, checkGitStatus } = await import(path.join(libDir, 'git-utils.mjs'))
-const { startWorktree, stopWorktree, resumeWorktree, listWorktrees, advancedListWorktrees, submitWorktree, cleanupWorktrees } = await import(path.join(libDir, 'worktree-utils.mjs'))
+const { startWorktree, stopWorktree, resumeWorktree, switchWorktree, listWorktrees, advancedListWorktrees, submitWorktree, cleanupWorktrees } = await import(path.join(libDir, 'worktree-utils.mjs'))
 const { setupBaag, checkDependencies } = await import(path.join(libDir, 'install-utils.mjs'))
 const { runConfigWizard, showConfig } = await import(path.join(libDir, 'config-utils.mjs'))
 const { listPortAssignments, getPortRange } = await import(path.join(libDir, 'port-utils.mjs'))
@@ -171,6 +171,13 @@ function showUsage() {
   printSubOption('Creates new worktree + session if neither exists')
 
   printCommand(
+    `${colors.boldMagenta('switch')} ${colors.cyan('<name>')}`,
+    'Switch to an existing worktree and attach to its session'
+  )
+  printSubOption('Quickly jump between different baag sessions')
+  printSubOption('Attaches to existing tmux session if available')
+
+  printCommand(
     `${colors.boldBlue('submit')}|${colors.boldBlue('finish')} ${colors.dim('[options]')}`,
     'Create PR and optionally clean up current worktree'
   )
@@ -242,6 +249,7 @@ function showUsage() {
   console.log(`  ${colors.dim('baag start hotfix --base main # Create from main branch instead of current')}`)
   console.log(`  ${colors.dim('baag stop                     # Remove current worktree (auto-detected)')}`)
   console.log(`  ${colors.dim('baag resume feature-branch    # Resume or create worktree with tmux session')}`)
+  console.log(`  ${colors.dim('baag switch feature-branch    # Switch to existing worktree')}`)
   console.log(`  ${colors.dim('baag finish                   # Create PR and optionally cleanup')}`)
   console.log(`  ${colors.dim('baag config                   # Run interactive configuration')}`)
   console.log(`  ${colors.dim('baag config --show            # Show current configuration')}`)
@@ -354,6 +362,9 @@ async function main() {
       break
     case 'resume':
       await resumeWorktree(args)
+      break
+    case 'switch':
+      await switchWorktree(args)
       break
     case 'submit':
     case 'finish':
