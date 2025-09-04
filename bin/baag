@@ -26,6 +26,35 @@ const { checkGitRepository, checkGitStatus } = await import(path.join(libDir, 'g
 const { startWorktree, stopWorktree, resumeWorktree, listWorktrees, advancedListWorktrees, submitWorktree, cleanupWorktrees } = await import(path.join(libDir, 'worktree-utils.mjs'))
 const { setupBaag, checkDependencies } = await import(path.join(libDir, 'install-utils.mjs'))
 const { runConfigWizard, showConfig } = await import(path.join(libDir, 'config-utils.mjs'))
+const { listPortAssignments, getPortRange } = await import(path.join(libDir, 'port-utils.mjs'))
+
+// Port management functionality
+async function showPorts() {
+  const { printHeader, printInfo, colors, formatBranch } = await import(path.join(libDir, 'colors.mjs'))
+  
+  printHeader('Port Assignments')
+  
+  try {
+    const assignments = await listPortAssignments()
+    const portRange = await getPortRange()
+    
+    console.log(`Port range: ${colors.cyan(`${portRange.start}-${portRange.end}`)}`)
+    console.log()
+    
+    if (Object.keys(assignments).length === 0) {
+      console.log(`${colors.dim('  No port assignments found')}`)
+    } else {
+      console.log(`${colors.bold('Assigned ports:')}`)
+      for (const [worktreeName, port] of Object.entries(assignments)) {
+        console.log(`  ${formatBranch(worktreeName)} ${colors.dim('→')} ${colors.boldCyan(`port ${port}`)}`)
+      }
+    }
+  } catch (error) {
+    const { printError } = await import(path.join(libDir, 'colors.mjs'))
+    printError(`Failed to list ports: ${error.message}`)
+    process.exit(1)
+  }
+}
 
 // Update functionality
 async function updateBaag() {
@@ -187,6 +216,12 @@ function showUsage() {
   printSubOption('--show: display current configuration')
 
   printCommand(
+    `${colors.boldYellow('ports')}`,
+    'Show port assignments for all worktrees'
+  )
+  printSubOption('Displays which ports are assigned to which worktrees')
+
+  printCommand(
     `${colors.boldCyan('update')}`,
     'Update baag to the latest version'
   )
@@ -210,6 +245,7 @@ function showUsage() {
   console.log(`  ${colors.dim('baag finish                   # Create PR and optionally cleanup')}`)
   console.log(`  ${colors.dim('baag config                   # Run interactive configuration')}`)
   console.log(`  ${colors.dim('baag config --show            # Show current configuration')}`)
+  console.log(`  ${colors.dim('baag ports                    # Show port assignments')}`)
   console.log(`  ${colors.dim('baag help                     # Show beautiful banner and help')}`)
   console.log(`  ${colors.dim('baag update                   # Update to latest version')}`)
   console.log(`  ${colors.dim('baag ls                       # List all worktrees')}`)
@@ -333,6 +369,9 @@ async function main() {
       break
     case 'cleanup':
       await cleanupWorktrees()
+      break
+    case 'ports':
+      await showPorts()
       break
     default:
       if (!command) {
