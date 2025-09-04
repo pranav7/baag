@@ -5,8 +5,8 @@ export NODE_PATH="$LIB_DIR/node_modules:$NODE_PATH"
 
 # Use the locally installed zx to run baag
 if [ -f "$LIB_DIR/node_modules/.bin/zx" ]; then
-    exec "$LIB_DIR/node_modules/.bin/zx" "$LIB_DIR/baag.mjs" "$@"
+    exec "$LIB_DIR/node_modules/.bin/zx" "$LIB_DIR/baag" "$@"
 else
     # Fallback to node if zx is not found
-    exec node "$LIB_DIR/baag.mjs" "$@"
+    exec node "$LIB_DIR/baag" "$@"
 fi
