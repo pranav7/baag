@@ -156,11 +156,12 @@ function showUsage() {
   printSubOption('--horizontal-split, --hs: Use horizontal tmux split')
 
   printCommand(
-    `${colors.boldRed('stop')}|${colors.boldRed('remove')} ${colors.cyan('[name]')}`,
+    `${colors.boldRed('stop')}|${colors.boldRed('remove')} ${colors.cyan('[name]')} ${colors.dim('[--force]')}`,
     'Remove an existing worktree'
   )
   printSubOption('Auto-detects worktree if run from within one')
   printSubOption('Cleans up tmux sessions automatically')
+  printSubOption('--force: Force removal even with uncommitted changes')
 
   printCommand(
     `${colors.boldCyan('resume')} ${colors.cyan('<name>')}`,
@@ -248,6 +249,7 @@ function showUsage() {
   console.log(`  ${colors.dim('baag start new-ui --hs        # Create with horizontal tmux split')}`)
   console.log(`  ${colors.dim('baag start hotfix --base main # Create from main branch instead of current')}`)
   console.log(`  ${colors.dim('baag stop                     # Remove current worktree (auto-detected)')}`)
+  console.log(`  ${colors.dim('baag stop feature --force     # Force remove worktree with uncommitted changes')}`)
   console.log(`  ${colors.dim('baag resume feature-branch    # Resume or create worktree with tmux session')}`)
   console.log(`  ${colors.dim('baag switch feature-branch    # Switch to existing worktree')}`)
   console.log(`  ${colors.dim('baag finish                   # Create PR and optionally cleanup')}`)

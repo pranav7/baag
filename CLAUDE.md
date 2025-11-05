@@ -58,10 +58,29 @@ Baag is a CLI tool for managing git worktrees with tmux and AI integration, buil
 
 ### Directory Structure
 - `bin/` - Executable CLI entry point
-- `lib/` - Core functionality modules  
+- `lib/` - Core functionality modules
 - `scripts/` - Build and release automation
 - `Formula/` - Homebrew installation formula
-- `.baag/` - Created in user projects for worktree storage
+- `.baag/` - Created in user projects for worktree storage and configuration
+
+### Configuration System
+
+**Config Files** (in `.baag/` directory)
+- `config.json` - Main configuration file
+  - `baseBranch` - Default base branch for worktrees
+  - `aiAgent` - AI agent to use (e.g., "claude")
+  - `codeEditor` - Code editor command
+  - `branchPrefix` - Prefix for branch names
+  - `worktreeSetup` - Worktree setup configuration
+    - `commands` - Array of commands to run on worktree creation (cross-platform)
+    - `commandsUnix` - Unix/macOS specific commands (takes precedence)
+    - `commandsWindows` - Windows specific commands (takes precedence)
+- `ports.json` - Port assignment tracking
+
+**Environment Variables** (available in setup commands)
+- `BAAG_ROOT_PATH` - Main repository path
+- `BAAG_WORKTREE_PATH` - Worktree path
+- `BAAG_BASE_BRANCH` - Base branch name
 
 ## Important Notes
 
