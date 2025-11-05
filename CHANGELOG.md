@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed optional prompts (session name, description, split preference)
 - Moved worktree setup config from `.baag.json` to `.baag/config.json`
 
+### Removed
+- Port management system and `ports` command
+- Dev server configuration
+- 3-pane layout (already using simple 2-pane layout)
+
 ## [0.0.2] - 2025-07-28
 
 ### Added
