@@ -1,6 +1,6 @@
 # Baag Makefile
 
-.PHONY: install uninstall test check clean help
+.PHONY: install uninstall test check clean help dev-install dev-uninstall dev-reinstall
 
 # Installation directory
 INSTALL_DIR ?= $(HOME)/.local/bin
@@ -85,15 +85,22 @@ dev-setup: ## Set up development environment
 	@echo "✓ Development environment ready"
 
 # Development helpers
-dev-install: dev-setup ## Install for development (symlink)
+dev-install: dev-setup ## Install for development (symlink to local files)
 	@echo "Installing for development..."
 	@mkdir -p "$(INSTALL_DIR)"
-	@ln -sf "$(PWD)/bin/baag-dev" "$(INSTALL_DIR)/$(SCRIPT_NAME)"
-	@ln -sf "$(PWD)/bin/baag-dev" "$(INSTALL_DIR)/$(ALIAS_NAME)"
+	@mkdir -p "$(HOME)/.local/lib"
+	@rm -rf "$(HOME)/.local/lib/baag"
+	@ln -sf "$(PWD)" "$(HOME)/.local/lib/baag"
+	@ln -sf "$(PWD)/bin/baag" "$(INSTALL_DIR)/$(SCRIPT_NAME)"
 	@echo "✓ Development installation complete (symlinked)"
+	@echo "  Changes to lib/ and bin/ will be reflected immediately"
 
 dev-uninstall: ## Remove development installation
 	@echo "Removing development installation..."
 	@rm -f "$(INSTALL_DIR)/$(SCRIPT_NAME)"
 	@rm -f "$(INSTALL_DIR)/$(ALIAS_NAME)"
+	@rm -rf "$(HOME)/.local/lib/baag"
 	@echo "✓ Development installation removed"
+
+dev-reinstall: dev-uninstall dev-install ## Reinstall dev setup (uninstall + dev-install)
+	@echo "✓ Development reinstall complete"
