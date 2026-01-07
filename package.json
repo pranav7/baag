@@ -1,44 +1,12 @@
 {
   "name": "baag",
-  "version": "0.0.1",
-  "description": "AI Terminal Agent Automation - Enhanced git worktree workflows with tmux and AI integration",
+  "version": "1.0.0",
   "type": "module",
-  "bin": {
-    "baag": "./bin/baag"
-  },
-  "scripts": {
-    "start": "zx bin/baag",
-    "test": "echo 'No tests yet'",
-    "release": "./scripts/release.sh",
-    "release:patch": "./scripts/release.sh patch",
-    "release:minor": "./scripts/release.sh minor",
-    "release:major": "./scripts/release.sh major"
-  },
   "dependencies": {
     "zx": "^8.0.0",
     "chalk": "^5.3.0",
     "boxen": "^7.1.1",
     "figures": "^6.1.0",
     "@clack/prompts": "^0.7.0"
-  },
-  "keywords": [
-    "git",
-    "worktree",
-    "tmux",
-    "ai",
-    "claude",
-    "terminal",
-    "automation",
-    "workflow"
-  ],
-  "author": "Your Name",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/your-username/baag.git"
-  },
-  "bugs": {
-    "url": "https://github.com/your-username/baag/issues"
-  },
-  "homepage": "https://github.com/your-username/baag#readme"
+  }
 }
