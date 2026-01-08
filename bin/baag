@@ -151,13 +151,12 @@ function showUsage() {
 
   printCommand(
     `${colors.boldBlue('submit')}|${colors.boldBlue('finish')} ${colors.dim('[options]')}`,
-    'Create PR and optionally clean up current worktree'
+    'Push branch and optionally create PR'
   )
   printSubOption('(submit and finish are the same command)')
-  printSubOption('--title <title>: PR title (default: use commit messages)')
+  printSubOption('--pr <title>: create PR with given title')
   printSubOption('--base-branch <branch>: target branch (default: remembered base)')
   printSubOption('--no-verify: bypass git hooks when pushing')
-  printSubOption('--no-pr: only push, don\'t create pull request')
 
   printCommand(
     `${colors.boldYellow('list')}|${colors.boldYellow('ls')}`,
@@ -217,7 +216,7 @@ function showUsage() {
   console.log(`  ${colors.dim('baag stop feature --force     # Force remove worktree with uncommitted changes')}`)
   console.log(`  ${colors.dim('baag resume feature-branch    # Resume or create worktree with tmux session')}`)
   console.log(`  ${colors.dim('baag switch feature-branch    # Switch to existing worktree')}`)
-  console.log(`  ${colors.dim('baag finish                   # Create PR and optionally cleanup')}`)
+  console.log(`  ${colors.dim('baag finish --pr "Add feature" # Push and create PR with title')}`)
   console.log(`  ${colors.dim('baag config                   # Run interactive configuration')}`)
   console.log(`  ${colors.dim('baag config --show            # Show current configuration')}`)
   console.log(`  ${colors.dim('baag help                     # Show beautiful banner and help')}`)
